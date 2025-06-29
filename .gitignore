@@ -1,0 +1,166 @@
+# ===== .gitignore para Sistema de Gestión de Compras =====
+
+# ===== DEPENDENCIAS =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ===== VARIABLES DE ENTORNO Y CONFIGURACIÓN SENSIBLE =====
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# ===== ARCHIVOS DE BASE DE DATOS =====
+# Scripts SQL con datos sensibles o credenciales
+src/config/database.sql
+config/database.sql
+*.sql
+# Excepto archivos de estructura/schema públicos
+!schema.sql
+!structure.sql
+
+# ===== LOGS =====
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ===== ARCHIVOS TEMPORALES =====
+.tmp/
+tmp/
+temp/
+
+# ===== UPLOADS Y ARCHIVOS SUBIDOS =====
+uploads/
+files/
+storage/
+public/uploads/
+src/uploads/
+
+# ===== REPORTES GENERADOS =====
+reports/
+exports/
+*.pdf
+*.xlsx
+*.csv
+# Excepto archivos de ejemplo
+!example.pdf
+!template.xlsx
+
+# ===== CERTIFICADOS Y CLAVES =====
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+ssl/
+certificates/
+
+# ===== ARCHIVOS DE RESPALDO =====
+backup/
+*.backup
+*.bak
+*.dump
+
+# ===== ARCHIVOS DE DESARROLLO =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== ARCHIVOS DE TESTING =====
+coverage/
+.nyc_output/
+.coverage/
+*.lcov
+
+# ===== ARCHIVOS DE BUILD =====
+build/
+dist/
+out/
+
+# ===== CACHE =====
+.cache/
+.eslintcache
+.npm
+.yarn-integrity
+
+# ===== SISTEMA OPERATIVO =====
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ===== HERRAMIENTAS DE DESARROLLO =====
+.eslintrc.local.js
+.prettierrc.local.js
+jest.config.local.js
+
+# ===== ARCHIVOS DE CONFIGURACIÓN LOCAL =====
+config/local.js
+config/development.local.js
+config/production.local.js
+
+# ===== DOCUMENTACIÓN GENERADA =====
+docs/generated/
+api-docs/
+
+# ===== ARCHIVOS DE SESIÓN =====
+sessions/
+.sessions
+
+# ===== ARCHIVOS DE QUEUE/WORKERS =====
+queue/
+workers/data/
+
+# ===== ESPECÍFICOS DEL PROYECTO =====
+# Archivos de configuración con credenciales
+src/config/database.json
+database.json
+credentials.json
+
+# Archivos de migración local/temporal
+migrations/temp/
+seeders/temp/
+
+# ===== NOTAS Y TODOS PERSONALES =====
+TODO.md
+NOTES.md
+notes.txt
+todo.txt
+
+# ===== ARCHIVOS DE MONITOREO =====
+newrelic.js
+.newrelic.yml
+
+# ===== KEEPFILES =====
+# Mantener estructura de carpetas vacías pero importantes
+uploads/.gitkeep
+!uploads/.gitkeep
+logs/.gitkeep
+!logs/.gitkeep
