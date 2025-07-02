@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/Compra.js =====
+// ===== ARCHIVO: src/models/Compra.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
   const Compra = sequelize.define(
     'Compra',
@@ -10,14 +10,14 @@ module.exports = (sequelize, DataTypes) => {
       },
       numero_orden: {
         type: DataTypes.STRING(50),
-        unique: true,
         allowNull: false,
+        unique: true,
       },
       solicitud_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Solicitudes',
+          model: 'solicitudes',
           key: 'id_solicitud',
         },
       },
@@ -25,20 +25,16 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Proveedores',
+          model: 'proveedores',
           key: 'id_proveedor',
         },
       },
       monto_total: {
-        type: DataTypes.DECIMAL(15, 2),
+        type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
-        validate: {
-          min: 0,
-        },
       },
       fecha_compra: {
         type: DataTypes.DATE,
-        allowNull: false,
         defaultValue: DataTypes.NOW,
       },
       fecha_entrega_estimada: {
@@ -50,13 +46,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
       estatus: {
-        type: DataTypes.ENUM(
-          'ordenada',
-          'en_transito',
-          'entregada',
-          'cancelada'
-        ),
-        allowNull: false,
+        type: DataTypes.ENUM('ordenada', 'en_transito', 'entregada', 'cancelada'),
         defaultValue: 'ordenada',
       },
       terminos_entrega: {
@@ -71,37 +61,25 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Usuarios',
+          model: 'usuarios',
           key: 'id_usuario',
         },
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
       },
     },
     {
       tableName: 'compras',
       timestamps: true,
-      createdAt: 'fecha_creacion',
-      updatedAt: 'fecha_actualizacion',
-      indexes: [
-        {
-          unique: true,
-          fields: ['numero_orden'],
-        },
-        {
-          fields: ['solicitud_id'],
-        },
-        {
-          fields: ['proveedor_seleccionado'],
-        },
-        {
-          fields: ['estatus'],
-        },
-        {
-          fields: ['fecha_compra'],
-        },
-        {
-          fields: ['creado_por'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 

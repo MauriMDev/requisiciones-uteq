@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/LogAuditoria.js =====
+// ===== ARCHIVO: src/models/LogAuditoria.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
   const LogAuditoria = sequelize.define(
     'LogAuditoria',
@@ -10,9 +10,9 @@ module.exports = (sequelize, DataTypes) => {
       },
       usuario_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
-          model: 'Usuarios',
+          model: 'usuarios',
           key: 'id_usuario',
         },
       },
@@ -26,43 +26,29 @@ module.exports = (sequelize, DataTypes) => {
       },
       registro_afectado: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       datos_anteriores: {
-        type: DataTypes.TEXT,
+        type: DataTypes.JSONB,
         allowNull: true,
       },
       datos_nuevos: {
-        type: DataTypes.TEXT,
+        type: DataTypes.JSONB,
         allowNull: true,
       },
       ip_usuario: {
-        type: DataTypes.STRING(45),
+        type: DataTypes.INET,
         allowNull: true,
       },
       fecha_accion: {
         type: DataTypes.DATE,
-        allowNull: false,
         defaultValue: DataTypes.NOW,
       },
     },
     {
       tableName: 'logs_auditoria',
       timestamps: false,
-      indexes: [
-        {
-          fields: ['usuario_id'],
-        },
-        {
-          fields: ['tabla_afectada'],
-        },
-        {
-          fields: ['fecha_accion'],
-        },
-        {
-          fields: ['accion_realizada'],
-        },
-      ],
+      underscored: true,
     }
   )
 

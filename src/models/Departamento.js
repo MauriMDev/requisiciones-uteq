@@ -9,13 +9,13 @@ module.exports = (sequelize, DataTypes) => {
         autoIncrement: true,
       },
       nombre_departamento: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING(100),
         allowNull: false,
       },
       codigo_departamento: {
         type: DataTypes.STRING(20),
-        unique: true,
         allowNull: false,
+        unique: true,
       },
       descripcion: {
         type: DataTypes.TEXT,
@@ -23,24 +23,23 @@ module.exports = (sequelize, DataTypes) => {
       },
       estatus: {
         type: DataTypes.ENUM('activo', 'inactivo'),
-        allowNull: false,
         defaultValue: 'activo',
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
       },
     },
     {
       tableName: 'departamentos',
       timestamps: true,
-      createdAt: 'fecha_creacion',
-      updatedAt: 'fecha_actualizacion',
-      indexes: [
-        {
-          unique: true,
-          fields: ['codigo_departamento'],
-        },
-        {
-          fields: ['estatus'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 

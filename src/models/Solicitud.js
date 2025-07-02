@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/Solicitud.js =====
+// ===== ARCHIVO: src/models/Solicitud.js - CORREGIDO =====
 module.exports = (sequelize, DataTypes) => {
   const Solicitud = sequelize.define(
     'Solicitud',
@@ -10,14 +10,14 @@ module.exports = (sequelize, DataTypes) => {
       },
       folio_solicitud: {
         type: DataTypes.STRING(50),
-        unique: true,
         allowNull: false,
+        unique: true,
       },
       solicitante_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Usuarios',
+          model: 'usuarios',
           key: 'id_usuario',
         },
       },
@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Departamentos',
+          model: 'departamentos',
           key: 'id_departamento',
         },
       },
@@ -39,27 +39,36 @@ module.exports = (sequelize, DataTypes) => {
       },
       cantidad: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: {
-          min: 1,
-        },
+        defaultValue: 1,
       },
       justificacion: {
         type: DataTypes.TEXT,
-        allowNull: false,
+        allowNull: true,
       },
       urgencia: {
         type: DataTypes.ENUM('baja', 'media', 'alta', 'critica'),
-        allowNull: false,
         defaultValue: 'media',
       },
       presupuesto_estimado: {
-        type: DataTypes.DECIMAL(15, 2),
+        type: DataTypes.DECIMAL(12, 2),
         allowNull: true,
-        validate: {
-          min: 0,
-        },
       },
+      // CAMPOS NUEVOS AGREGADOS
+      fecha_necesidad: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      items: {
+        type: DataTypes.JSONB,
+        defaultValue: [],
+        allowNull: true,
+      },
+      archivos_adjuntos: {
+        type: DataTypes.JSONB,
+        defaultValue: [],
+        allowNull: true,
+      },
+      // FIN CAMPOS NUEVOS
       estatus: {
         type: DataTypes.ENUM(
           'pendiente',
@@ -69,55 +78,56 @@ module.exports = (sequelize, DataTypes) => {
           'en_proceso',
           'completada'
         ),
-        allowNull: false,
         defaultValue: 'pendiente',
       },
       fecha_creacion: {
         type: DataTypes.DATE,
-        allowNull: false,
         defaultValue: DataTypes.NOW,
       },
       fecha_actualizacion: {
         type: DataTypes.DATE,
-        allowNull: false,
         defaultValue: DataTypes.NOW,
       },
       comentarios_generales: {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
     },
     {
       tableName: 'solicitudes',
       timestamps: true,
-      createdAt: 'fecha_creacion',
-      updatedAt: 'fecha_actualizacion',
-      indexes: [
-        {
-          unique: true,
-          fields: ['folio_solicitud'],
-        },
-        {
-          fields: ['solicitante_id'],
-        },
-        {
-          fields: ['departamento_id'],
-        },
-        {
-          fields: ['estatus'],
-        },
-        {
-          fields: ['urgencia'],
-        },
-        {
-          fields: ['tipo_requisicion'],
-        },
-        {
-          fields: ['fecha_creacion'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 
   return Solicitud
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/ConfiguracionSistema.js =====
+// ===== ARCHIVO: src/models/ConfiguracionSistema.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
   const ConfiguracionSistema = sequelize.define(
     'ConfiguracionSistema',
@@ -10,8 +10,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       clave_configuracion: {
         type: DataTypes.STRING(100),
-        unique: true,
         allowNull: false,
+        unique: true,
       },
       valor_configuracion: {
         type: DataTypes.TEXT,
@@ -23,40 +23,35 @@ module.exports = (sequelize, DataTypes) => {
       },
       tipo_dato: {
         type: DataTypes.ENUM('string', 'integer', 'decimal', 'boolean'),
-        allowNull: false,
         defaultValue: 'string',
       },
       fecha_modificacion: {
         type: DataTypes.DATE,
-        allowNull: false,
         defaultValue: DataTypes.NOW,
       },
       modificado_por: {
         type: DataTypes.INTEGER,
         allowNull: true,
         references: {
-          model: 'Usuarios',
+          model: 'usuarios',
           key: 'id_usuario',
         },
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
       },
     },
     {
       tableName: 'configuracion_sistema',
       timestamps: true,
-      createdAt: 'fecha_creacion',
-      updatedAt: 'fecha_modificacion',
-      indexes: [
-        {
-          unique: true,
-          fields: ['clave_configuracion'],
-        },
-        {
-          fields: ['modificado_por'],
-        },
-        {
-          fields: ['tipo_dato'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 

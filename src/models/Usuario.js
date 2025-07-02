@@ -10,8 +10,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       numero_empleado: {
         type: DataTypes.STRING(50),
-        unique: true,
         allowNull: false,
+        unique: true,
       },
       nombre_completo: {
         type: DataTypes.STRING(255),
@@ -19,8 +19,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       correo_institucional: {
         type: DataTypes.STRING(255),
-        unique: true,
         allowNull: false,
+        unique: true,
         validate: {
           isEmail: true,
         },
@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Departamentos',
+          model: 'departamentos',
           key: 'id_departamento',
         },
       },
@@ -48,17 +48,14 @@ module.exports = (sequelize, DataTypes) => {
           'administrativo',
           'admin_sistema'
         ),
-        allowNull: false,
         defaultValue: 'solicitante',
       },
       estatus: {
         type: DataTypes.ENUM('activo', 'inactivo'),
-        allowNull: false,
         defaultValue: 'activo',
       },
       fecha_registro: {
         type: DataTypes.DATE,
-        allowNull: false,
         defaultValue: DataTypes.NOW,
       },
       ultimo_acceso: {
@@ -69,35 +66,25 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: true,
         references: {
-          model: 'Usuarios',
+          model: 'usuarios',
           key: 'id_usuario',
         },
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
       },
     },
     {
       tableName: 'usuarios',
       timestamps: true,
-      createdAt: 'fecha_registro',
-      updatedAt: 'fecha_actualizacion',
-      indexes: [
-        {
-          unique: true,
-          fields: ['numero_empleado'],
-        },
-        {
-          unique: true,
-          fields: ['correo_institucional'],
-        },
-        {
-          fields: ['departamento_id'],
-        },
-        {
-          fields: ['rol'],
-        },
-        {
-          fields: ['estatus'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 

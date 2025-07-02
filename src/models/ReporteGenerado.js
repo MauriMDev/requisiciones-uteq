@@ -1,22 +1,14 @@
-// ===== ARCHIVO: src/models/Aprobacion.js =====
+// ===== ARCHIVO: src/models/ReporteGenerado.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
-  const Aprobacion = sequelize.define(
-    'Aprobacion',
+  const ReporteGenerado = sequelize.define(
+    'ReporteGenerado',
     {
-      id_aprobacion: {
+      id_reporte: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
       },
-      solicitud_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'solicitudes',
-          key: 'id_solicitud',
-        },
-      },
-      aprobador_id: {
+      generado_por: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
@@ -24,25 +16,29 @@ module.exports = (sequelize, DataTypes) => {
           key: 'id_usuario',
         },
       },
-      accion: {
-        type: DataTypes.ENUM('aprobar', 'revisar', 'denegar'),
+      tipo_reporte: {
+        type: DataTypes.STRING(100),
         allowNull: false,
       },
-      comentarios: {
-        type: DataTypes.TEXT,
+      nombre_reporte: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      parametros_reporte: {
+        type: DataTypes.JSONB,
         allowNull: true,
       },
-      fecha_accion: {
+      ruta_archivo: {
+        type: DataTypes.STRING(500),
+        allowNull: true,
+      },
+      fecha_generacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
-      nivel_aprobacion: {
-        type: DataTypes.INTEGER,
-        defaultValue: 1,
-      },
       estatus: {
-        type: DataTypes.ENUM('pendiente', 'completada'),
-        defaultValue: 'pendiente',
+        type: DataTypes.ENUM('generando', 'completado', 'error'),
+        defaultValue: 'generando',
       },
       created_at: {
         type: DataTypes.DATE,
@@ -54,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'aprobaciones',
+      tableName: 'reportes_generados',
       timestamps: true,
       createdAt: 'created_at',
       updatedAt: 'updated_at',
@@ -62,5 +58,5 @@ module.exports = (sequelize, DataTypes) => {
     }
   )
 
-  return Aprobacion
+  return ReporteGenerado
 }

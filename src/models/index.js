@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/index.js =====
+// ===== ARCHIVO: src/models/index.js CORREGIDO =====
 const { Sequelize } = require('sequelize')
 const DatabaseService = require('../services/databaseService')
 
@@ -8,13 +8,13 @@ let sequelize = DatabaseService.getSequelize()
 // Si no existe, crear nueva instancia (fallback)
 if (!sequelize) {
   sequelize = new Sequelize(
-    process.env.DB_NAME || 'sistema_requisiciones',
+    process.env.DB_NAME || 'requisiciones_uteq', // CORREGIR nombre de BD
     process.env.DB_USER || 'postgres',
     process.env.DB_PASSWORD || '',
     {
       host: process.env.DB_HOST || 'localhost',
       port: process.env.DB_PORT || 5432,
-      dialect: 'postgres', // CAMBIAR de mysql a postgres
+      dialect: 'postgres',
       logging: process.env.NODE_ENV === 'development' ? console.log : false,
       pool: {
         max: 5,
@@ -32,7 +32,7 @@ if (!sequelize) {
   )
 }
 
-// Importar modelos - CORREGIR rutas relativas
+// Importar modelos corregidos
 const Usuario = require('./Usuario')(sequelize, Sequelize.DataTypes)
 const Departamento = require('./Departamento')(sequelize, Sequelize.DataTypes)
 const Solicitud = require('./Solicitud')(sequelize, Sequelize.DataTypes)
@@ -42,15 +42,13 @@ const Cotizacion = require('./Cotizacion')(sequelize, Sequelize.DataTypes)
 const Compra = require('./Compra')(sequelize, Sequelize.DataTypes)
 const Factura = require('./Factura')(sequelize, Sequelize.DataTypes)
 const Notificacion = require('./Notificacion')(sequelize, Sequelize.DataTypes)
-const DocumentoAdjunto = require('./DocumentoAdjunto')(
-  sequelize,
-  Sequelize.DataTypes
-)
+const DocumentoAdjunto = require('./DocumentoAdjunto')(sequelize, Sequelize.DataTypes)
 const LogAuditoria = require('./LogAuditoria')(sequelize, Sequelize.DataTypes)
-const ConfiguracionSistema = require('./ConfiguracionSistema')(
-  sequelize,
-  Sequelize.DataTypes
-)
+const ConfiguracionSistema = require('./ConfiguracionSistema')(sequelize, Sequelize.DataTypes)
+
+// AGREGAR modelos que faltaban
+const EvaluacionProveedor = require('./EvaluacionProveedor')(sequelize, Sequelize.DataTypes)
+const ReporteGenerado = require('./ReporteGenerado')(sequelize, Sequelize.DataTypes)
 
 // Configurar asociaciones
 const setupAssociations = () => {
@@ -64,7 +62,17 @@ const setupAssociations = () => {
     as: 'usuarios',
   })
 
-  // Usuario - Solicitud
+  // Usuario auto-referencia (creado_por)
+  Usuario.belongsTo(Usuario, {
+    foreignKey: 'creado_por',
+    as: 'creador',
+  })
+  Usuario.hasMany(Usuario, {
+    foreignKey: 'creado_por',
+    as: 'usuarios_creados',
+  })
+
+  // Usuario - Solicitud (solicitante)
   Usuario.hasMany(Solicitud, {
     foreignKey: 'solicitante_id',
     as: 'solicitudes',
@@ -94,12 +102,15 @@ const setupAssociations = () => {
     as: 'solicitud',
   })
 
-  // Usuario - Aprobación
+  // Usuario - Aprobación (aprobador)
   Usuario.hasMany(Aprobacion, {
     foreignKey: 'aprobador_id',
-    as: 'aprobaciones',
+    as: 'aprobaciones_realizadas',
   })
-  Aprobacion.belongsTo(Usuario, { foreignKey: 'aprobador_id', as: 'aprobador' })
+  Aprobacion.belongsTo(Usuario, {
+    foreignKey: 'aprobador_id',
+    as: 'aprobador',
+  })
 
   // Solicitud - Cotización
   Solicitud.hasMany(Cotizacion, {
@@ -121,11 +132,37 @@ const setupAssociations = () => {
     as: 'proveedor',
   })
 
-  // Solicitud - Compra
-  Solicitud.hasOne(Compra, { foreignKey: 'solicitud_id', as: 'compra' })
-  Compra.belongsTo(Solicitud, { foreignKey: 'solicitud_id', as: 'solicitud' })
+  // Cotización - EvaluacionProveedor
+  Cotizacion.hasOne(EvaluacionProveedor, {
+    foreignKey: 'cotizacion_id',
+    as: 'evaluacion',
+  })
+  EvaluacionProveedor.belongsTo(Cotizacion, {
+    foreignKey: 'cotizacion_id',
+    as: 'cotizacion',
+  })
 
-  // Proveedor - Compra
+  // Usuario - EvaluacionProveedor (evaluado_por)
+  Usuario.hasMany(EvaluacionProveedor, {
+    foreignKey: 'evaluado_por',
+    as: 'evaluaciones_realizadas',
+  })
+  EvaluacionProveedor.belongsTo(Usuario, {
+    foreignKey: 'evaluado_por',
+    as: 'evaluador',
+  })
+
+  // Solicitud - Compra
+  Solicitud.hasOne(Compra, {
+    foreignKey: 'solicitud_id',
+    as: 'compra',
+  })
+  Compra.belongsTo(Solicitud, {
+    foreignKey: 'solicitud_id',
+    as: 'solicitud',
+  })
+
+  // Proveedor - Compra (proveedor_seleccionado)
   Proveedor.hasMany(Compra, {
     foreignKey: 'proveedor_seleccionado',
     as: 'compras',
@@ -135,14 +172,30 @@ const setupAssociations = () => {
     as: 'proveedor',
   })
 
-  // Compra - Factura
-  Compra.hasMany(Factura, { foreignKey: 'compra_id', as: 'facturas' })
-  Factura.belongsTo(Compra, { foreignKey: 'compra_id', as: 'compra' })
+  // Usuario - Compra (creado_por)
+  Usuario.hasMany(Compra, {
+    foreignKey: 'creado_por',
+    as: 'compras_creadas',
+  })
+  Compra.belongsTo(Usuario, {
+    foreignKey: 'creado_por',
+    as: 'creador',
+  })
 
-  // Usuario - Notificación
+  // Compra - Factura
+  Compra.hasMany(Factura, {
+    foreignKey: 'compra_id',
+    as: 'facturas',
+  })
+  Factura.belongsTo(Compra, {
+    foreignKey: 'compra_id',
+    as: 'compra',
+  })
+
+  // Usuario - Notificación (usuario_destino)
   Usuario.hasMany(Notificacion, {
     foreignKey: 'usuario_destino',
-    as: 'notificaciones',
+    as: 'notificaciones_recibidas',
   })
   Notificacion.belongsTo(Usuario, {
     foreignKey: 'usuario_destino',
@@ -169,7 +222,7 @@ const setupAssociations = () => {
     as: 'solicitud',
   })
 
-  // Usuario - DocumentoAdjunto
+  // Usuario - DocumentoAdjunto (subido_por)
   Usuario.hasMany(DocumentoAdjunto, {
     foreignKey: 'subido_por',
     as: 'documentos_subidos',
@@ -184,9 +237,12 @@ const setupAssociations = () => {
     foreignKey: 'usuario_id',
     as: 'logs_auditoria',
   })
-  LogAuditoria.belongsTo(Usuario, { foreignKey: 'usuario_id', as: 'usuario' })
+  LogAuditoria.belongsTo(Usuario, {
+    foreignKey: 'usuario_id',
+    as: 'usuario',
+  })
 
-  // Usuario - ConfiguracionSistema
+  // Usuario - ConfiguracionSistema (modificado_por)
   Usuario.hasMany(ConfiguracionSistema, {
     foreignKey: 'modificado_por',
     as: 'configuraciones_modificadas',
@@ -194,6 +250,16 @@ const setupAssociations = () => {
   ConfiguracionSistema.belongsTo(Usuario, {
     foreignKey: 'modificado_por',
     as: 'usuario_modificacion',
+  })
+
+  // Usuario - ReporteGenerado (generado_por)
+  Usuario.hasMany(ReporteGenerado, {
+    foreignKey: 'generado_por',
+    as: 'reportes_generados',
+  })
+  ReporteGenerado.belongsTo(Usuario, {
+    foreignKey: 'generado_por',
+    as: 'usuario_generador',
   })
 }
 
@@ -210,10 +276,12 @@ module.exports = {
   Aprobacion,
   Proveedor,
   Cotizacion,
+  EvaluacionProveedor,
   Compra,
   Factura,
   Notificacion,
   DocumentoAdjunto,
   LogAuditoria,
   ConfiguracionSistema,
+  ReporteGenerado,
 }

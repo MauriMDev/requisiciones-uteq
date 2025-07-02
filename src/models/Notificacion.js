@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/Notificacion.js =====
+// ===== ARCHIVO: src/models/Notificacion.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
   const Notificacion = sequelize.define(
     'Notificacion',
@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Usuarios',
+          model: 'usuarios',
           key: 'id_usuario',
         },
       },
@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: true,
         references: {
-          model: 'Solicitudes',
+          model: 'solicitudes',
           key: 'id_solicitud',
         },
       },
@@ -33,51 +33,36 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
       },
       tipo: {
-        type: DataTypes.ENUM(
-          'nueva_solicitud',
-          'cambio_estatus',
-          'aprobacion_requerida',
-          'compra_completada'
-        ),
+        type: DataTypes.ENUM('nueva_solicitud', 'cambio_estatus', 'aprobacion_requerida', 'compra_completada'),
         allowNull: false,
       },
       estatus: {
         type: DataTypes.ENUM('no_leida', 'leida'),
-        allowNull: false,
         defaultValue: 'no_leida',
       },
       fecha_envio: {
         type: DataTypes.DATE,
-        allowNull: false,
         defaultValue: DataTypes.NOW,
       },
       fecha_lectura: {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
     },
     {
       tableName: 'notificaciones',
       timestamps: true,
-      createdAt: 'fecha_envio',
-      updatedAt: 'fecha_actualizacion',
-      indexes: [
-        {
-          fields: ['usuario_destino'],
-        },
-        {
-          fields: ['solicitud_id'],
-        },
-        {
-          fields: ['estatus'],
-        },
-        {
-          fields: ['tipo'],
-        },
-        {
-          fields: ['fecha_envio'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 

@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/Factura.js =====
+// ===== ARCHIVO: src/models/Factura.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
   const Factura = sequelize.define(
     'Factura',
@@ -12,40 +12,30 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Compras',
+          model: 'compras',
           key: 'id_compra',
         },
       },
       folio_fiscal: {
         type: DataTypes.STRING(50),
-        unique: true,
         allowNull: false,
+        unique: true,
       },
       serie_factura: {
         type: DataTypes.STRING(20),
         allowNull: true,
       },
       monto_factura: {
-        type: DataTypes.DECIMAL(15, 2),
+        type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
-        validate: {
-          min: 0,
-        },
       },
       iva: {
-        type: DataTypes.DECIMAL(15, 2),
-        allowNull: false,
-        defaultValue: 0.0,
-        validate: {
-          min: 0,
-        },
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
       },
       total_factura: {
-        type: DataTypes.DECIMAL(15, 2),
+        type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
-        validate: {
-          min: 0,
-        },
       },
       fecha_factura: {
         type: DataTypes.DATE,
@@ -53,11 +43,10 @@ module.exports = (sequelize, DataTypes) => {
       },
       fecha_recepcion: {
         type: DataTypes.DATE,
-        allowNull: true,
+        defaultValue: DataTypes.NOW,
       },
       estatus: {
         type: DataTypes.ENUM('pendiente', 'recibida', 'pagada', 'cancelada'),
-        allowNull: false,
         defaultValue: 'pendiente',
       },
       ruta_archivo_pdf: {
@@ -68,30 +57,21 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(500),
         allowNull: true,
       },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
     },
     {
       tableName: 'facturas',
       timestamps: true,
-      createdAt: 'fecha_creacion',
-      updatedAt: 'fecha_actualizacion',
-      indexes: [
-        {
-          unique: true,
-          fields: ['folio_fiscal'],
-        },
-        {
-          fields: ['compra_id'],
-        },
-        {
-          fields: ['estatus'],
-        },
-        {
-          fields: ['fecha_factura'],
-        },
-        {
-          fields: ['total_factura'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 

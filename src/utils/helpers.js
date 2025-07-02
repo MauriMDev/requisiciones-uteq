@@ -1,19 +1,24 @@
-// ===== ARCHIVO: src/utils/helpers.js =====
+// ===== ARCHIVO: src/utils/helpers.js MEJORADO =====
 const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
 
-// Generar folio único
+// Generar folio único MEJORADO
 const generateFolio = (prefix = 'SOL') => {
   const timestamp = Date.now()
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-  return `${prefix}-${timestamp}-${random}`
+  const random = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, '0')
+  const year = new Date().getFullYear()
+  return `${prefix}-${year}-${timestamp}-${random}`
 }
 
 // Generar número de orden
 const generateOrderNumber = () => {
   const year = new Date().getFullYear()
   const timestamp = Date.now()
-  const random = Math.floor(Math.random() * 100).toString().padStart(2, '0')
+  const random = Math.floor(Math.random() * 100)
+    .toString()
+    .padStart(2, '0')
   return `ORD-${year}-${timestamp}-${random}`
 }
 
@@ -37,24 +42,30 @@ const generateToken = (length = 32) => {
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
-    currency: 'MXN'
+    currency: 'MXN',
   }).format(amount)
 }
 
-// Calcular paginación
+// Calcular paginación MEJORADO
 const calculatePagination = (page = 1, limit = 10) => {
-  const offset = (page - 1) * limit
+  const pageNum = Math.max(1, parseInt(page) || 1)
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10)) // Máximo 100 por página
+  const offset = (pageNum - 1) * limitNum
+
   return {
-    limit: parseInt(limit),
-    offset: parseInt(offset),
-    page: parseInt(page)
+    limit: limitNum,
+    offset: offset,
+    page: pageNum,
   }
 }
 
 // Sanitizar objeto para auditoria
-const sanitizeForAudit = (obj, excludeFields = ['password_hash', 'password']) => {
+const sanitizeForAudit = (
+  obj,
+  excludeFields = ['password_hash', 'password']
+) => {
   const sanitized = { ...obj }
-  excludeFields.forEach(field => {
+  excludeFields.forEach((field) => {
     if (sanitized[field]) {
       delete sanitized[field]
     }
@@ -70,5 +81,5 @@ module.exports = {
   generateToken,
   formatCurrency,
   calculatePagination,
-  sanitizeForAudit
+  sanitizeForAudit,
 }

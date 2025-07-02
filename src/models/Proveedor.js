@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/Proveedor.js =====
+// ===== ARCHIVO: src/models/Proveedor.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
   const Proveedor = sequelize.define(
     'Proveedor',
@@ -14,11 +14,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       rfc: {
         type: DataTypes.STRING(13),
-        unique: true,
         allowNull: false,
-        validate: {
-          len: [12, 13],
-        },
+        unique: true,
       },
       direccion: {
         type: DataTypes.TEXT,
@@ -41,41 +38,31 @@ module.exports = (sequelize, DataTypes) => {
       },
       calificacion_promedio: {
         type: DataTypes.DECIMAL(3, 2),
-        allowNull: true,
-        defaultValue: 0.0,
-        validate: {
-          min: 0,
-          max: 10,
-        },
+        defaultValue: 0.00,
       },
       estatus: {
         type: DataTypes.ENUM('activo', 'inactivo', 'suspendido'),
-        allowNull: false,
         defaultValue: 'activo',
       },
       fecha_registro: {
         type: DataTypes.DATE,
-        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
     },
     {
       tableName: 'proveedores',
       timestamps: true,
-      createdAt: 'fecha_registro',
-      updatedAt: 'fecha_actualizacion',
-      indexes: [
-        {
-          unique: true,
-          fields: ['rfc'],
-        },
-        {
-          fields: ['estatus'],
-        },
-        {
-          fields: ['calificacion_promedio'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 

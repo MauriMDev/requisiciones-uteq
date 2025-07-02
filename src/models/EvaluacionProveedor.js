@@ -1,52 +1,56 @@
-// ===== ARCHIVO: src/models/DocumentoAdjunto.js - NUEVO =====
+// ===== ARCHIVO: src/models/EvaluacionProveedor.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
-  const DocumentoAdjunto = sequelize.define(
-    'DocumentoAdjunto',
+  const EvaluacionProveedor = sequelize.define(
+    'EvaluacionProveedor',
     {
-      id_documento: {
+      id_evaluacion: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
       },
-      solicitud_id: {
+      cotizacion_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'solicitudes',
-          key: 'id_solicitud',
+          model: 'cotizaciones',
+          key: 'id_cotizacion',
         },
       },
-      nombre_archivo: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-      },
-      ruta_archivo: {
-        type: DataTypes.STRING(500),
-        allowNull: false,
-      },
-      tipo_archivo: {
-        type: DataTypes.STRING(50),
+      puntuacion_precio: {
+        type: DataTypes.DECIMAL(3, 2),
         allowNull: true,
       },
-      tamaño_archivo: {
-        type: DataTypes.INTEGER,
+      puntuacion_calidad: {
+        type: DataTypes.DECIMAL(3, 2),
         allowNull: true,
       },
-      fecha_subida: {
+      puntuacion_tiempo: {
+        type: DataTypes.DECIMAL(3, 2),
+        allowNull: true,
+      },
+      puntuacion_terminos: {
+        type: DataTypes.DECIMAL(3, 2),
+        allowNull: true,
+      },
+      puntuacion_total: {
+        type: DataTypes.DECIMAL(3, 2),
+        allowNull: true,
+      },
+      justificacion_seleccion: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      fecha_evaluacion: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,
       },
-      subido_por: {
+      evaluado_por: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
           model: 'usuarios',
           key: 'id_usuario',
         },
-      },
-      tipo_documento: {
-        type: DataTypes.ENUM('solicitud_pdf', 'recibo', 'factura', 'cotizacion', 'otro'),
-        defaultValue: 'otro',
       },
       created_at: {
         type: DataTypes.DATE,
@@ -58,7 +62,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'documentos_adjuntos',
+      tableName: 'evaluacion_proveedores',
       timestamps: true,
       createdAt: 'created_at',
       updatedAt: 'updated_at',
@@ -66,5 +70,5 @@ module.exports = (sequelize, DataTypes) => {
     }
   )
 
-  return DocumentoAdjunto
+  return EvaluacionProveedor
 }

@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/Cotizacion.js =====
+// ===== ARCHIVO: src/models/Cotizacion.js - NUEVO =====
 module.exports = (sequelize, DataTypes) => {
   const Cotizacion = sequelize.define(
     'Cotizacion',
@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Solicitudes',
+          model: 'solicitudes',
           key: 'id_solicitud',
         },
       },
@@ -20,30 +20,21 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'Proveedores',
+          model: 'proveedores',
           key: 'id_proveedor',
         },
       },
       precio_unitario: {
-        type: DataTypes.DECIMAL(15, 2),
+        type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
-        validate: {
-          min: 0,
-        },
       },
       precio_total: {
-        type: DataTypes.DECIMAL(15, 2),
+        type: DataTypes.DECIMAL(12, 2),
         allowNull: false,
-        validate: {
-          min: 0,
-        },
       },
       tiempo_entrega_dias: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: {
-          min: 1,
-        },
+        allowNull: true,
       },
       terminos_pago: {
         type: DataTypes.STRING(255),
@@ -55,42 +46,27 @@ module.exports = (sequelize, DataTypes) => {
       },
       fecha_cotizacion: {
         type: DataTypes.DATE,
-        allowNull: false,
         defaultValue: DataTypes.NOW,
       },
       estatus: {
-        type: DataTypes.ENUM(
-          'pendiente',
-          'enviada',
-          'seleccionada',
-          'rechazada'
-        ),
-        allowNull: false,
+        type: DataTypes.ENUM('pendiente', 'enviada', 'seleccionada', 'rechazada'),
         defaultValue: 'pendiente',
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
       },
     },
     {
       tableName: 'cotizaciones',
       timestamps: true,
-      createdAt: 'fecha_creacion',
-      updatedAt: 'fecha_actualizacion',
-      indexes: [
-        {
-          fields: ['solicitud_id'],
-        },
-        {
-          fields: ['proveedor_id'],
-        },
-        {
-          fields: ['estatus'],
-        },
-        {
-          fields: ['fecha_cotizacion'],
-        },
-        {
-          fields: ['precio_total'],
-        },
-      ],
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      underscored: true,
     }
   )
 
