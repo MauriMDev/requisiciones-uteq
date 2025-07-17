@@ -7,6 +7,7 @@ const {
   obtenerSolicitudes,
   obtenerSolicitudPorId,
   actualizarSolicitud,
+  aprobarSolicitud,
   cancelarSolicitud,
   obtenerEstadisticas
 } = require('../controllers/solicitudesController')
@@ -55,6 +56,12 @@ router
     authorize('solicitante', 'admin_sistema'),
     actualizarSolicitud
   )
+
+// Ruta para aprobar solicitud
+router.patch('/:id/aprobar', 
+  authorize('admin_sistema', 'administrativo'),
+  aprobarSolicitud
+)
 
 // Ruta para cancelar solicitud
 router.patch('/:id/cancelar', 

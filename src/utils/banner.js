@@ -48,9 +48,7 @@ function showServerInfo(PORT, environment) {
   console.log('   🧪 Pruebas:      npm test')
   console.log('   🛑 Detener:      Ctrl + C\n')
   
-  console.log('=' * 65)
   console.log('🎉 ¡Listo para usar! Abre tu navegador en:', baseUrl)
-  console.log('=' * 65 + '\n')
 }
 
 // Versión con colores (si instalas chalk)
