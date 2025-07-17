@@ -17,6 +17,9 @@ const generateToken = (id) => {
 const login = async (req, res, next) => {
   try {
     const { correo_institucional, password } = req.body
+    console.log("HOLAAAAAAA")
+    console.log(correo_institucional)
+    console.log(password)
 
     // Validar input
     if (!correo_institucional || !password) {
@@ -37,7 +40,6 @@ const login = async (req, res, next) => {
         },
       ],
     })
-    console.log(usuario)
 
     if (!usuario) {
       return res.status(401).json({
