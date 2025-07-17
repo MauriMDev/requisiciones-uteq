@@ -55,6 +55,7 @@ const login = async (req, res, next) => {
     }
 
     // Verificar password
+    console.log(password, usuario.password_hash)
     const isMatch = await comparePassword(password, usuario.password_hash)
     if (!isMatch) {
       return res.status(401).json({
