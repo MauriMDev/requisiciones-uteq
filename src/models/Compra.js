@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/Compra.js - NUEVO =====
+// src/models/Compra.js - CORRECCIÓN FINAL
 module.exports = (sequelize, DataTypes) => {
   const Compra = sequelize.define(
     'Compra',
@@ -22,12 +22,8 @@ module.exports = (sequelize, DataTypes) => {
         },
       },
       proveedor_seleccionado: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING,
         allowNull: false,
-        references: {
-          model: 'proveedores',
-          key: 'id_proveedor',
-        },
       },
       monto_total: {
         type: DataTypes.DECIMAL(12, 2),
@@ -46,7 +42,12 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
       estatus: {
-        type: DataTypes.ENUM('ordenada', 'en_transito', 'entregada', 'cancelada'),
+        type: DataTypes.ENUM(
+          'ordenada',
+          'en_transito',
+          'entregada',
+          'cancelada'
+        ),
         defaultValue: 'ordenada',
       },
       terminos_entrega: {

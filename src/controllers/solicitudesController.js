@@ -8,10 +8,33 @@ const {
   sequelize,
 } = require('../models')
 
+// Función auxiliar para convertir fecha dd/mm/yyyy a Date
+const convertirFecha = (fechaString) => {
+  if (!fechaString) return null
+
+  // Si ya es una fecha válida, devolverla
+  if (fechaString instanceof Date && !isNaN(fechaString)) {
+    return fechaString
+  }
+
+  // Si es string en formato dd/mm/yyyy
+  if (typeof fechaString === 'string') {
+    const [dia, mes, año] = fechaString.split('/')
+    if (dia && mes && año) {
+      const fecha = new Date(año, mes - 1, dia) // mes - 1 porque Date usa índices 0-11
+      return isNaN(fecha) ? null : fecha
+    }
+  }
+
+  return null
+}
+
 class SolicitudesController {
   // Crear nueva solicitud
   async crearSolicitud(req, res) {
-    console.log(req)
+    console.log('Archivos recibidos:', req.files)
+    console.log('Body recibido:', req.body)
+
     const transaction = await sequelize.transaction()
     try {
       const {
@@ -52,6 +75,22 @@ class SolicitudesController {
         })
       }
 
+      // Procesar archivos subidos (ya procesados por el middleware)
+      let archivos_adjuntos = []
+      if (
+        req.body.archivos_procesados &&
+        req.body.archivos_procesados.length > 0
+      ) {
+        archivos_adjuntos = req.body.archivos_procesados.map((file) => ({
+          nombre_original: file.originalname,
+          nombre_archivo: file.filename,
+          ruta_archivo: file.path,
+          tamaño: file.size,
+          tipo_mime: file.mimetype,
+          fecha_subida: new Date(),
+        }))
+      }
+
       // Generar folio único usando Sequelize
       const ultimaSolicitud = await sequelize.query(
         `
@@ -85,6 +124,12 @@ class SolicitudesController {
         })
       }
 
+      // Procesar items (ya procesados por el middleware)
+      const itemsProcesados = req.body.items || []
+
+      // Convertir fecha_necesidad del formato dd/mm/yyyy
+      const fechaNecesidadConvertida = convertirFecha(fecha_necesidad)
+
       // Crear solicitud usando Sequelize
       const nuevaSolicitud = await Solicitud.create(
         {
@@ -97,8 +142,9 @@ class SolicitudesController {
           justificacion,
           urgencia,
           presupuesto_estimado,
-          fecha_necesidad,
-          items,
+          fecha_necesidad: fechaNecesidadConvertida,
+          items: itemsProcesados,
+          archivos_adjuntos, // ← AQUÍ SE GUARDAN LOS ARCHIVOS
           comentarios_generales,
         },
         { transaction }
@@ -118,6 +164,8 @@ class SolicitudesController {
           urgencia: nuevaSolicitud.urgencia,
           presupuesto_estimado: nuevaSolicitud.presupuesto_estimado,
           fecha_necesidad: nuevaSolicitud.fecha_necesidad,
+          items: nuevaSolicitud.items,
+          archivos_adjuntos: nuevaSolicitud.archivos_adjuntos,
           estatus: nuevaSolicitud.estatus,
           fecha_creacion: nuevaSolicitud.fecha_creacion,
         },
@@ -125,6 +173,23 @@ class SolicitudesController {
     } catch (error) {
       await transaction.rollback()
       console.error('Error al crear solicitud:', error)
+
+      // Limpiar archivos subidos si hay error
+      if (
+        req.body.archivos_procesados &&
+        req.body.archivos_procesados.length > 0
+      ) {
+        try {
+          await Promise.all(
+            req.body.archivos_procesados.map((file) =>
+              fs.unlink(file.path).catch(console.error)
+            )
+          )
+        } catch (cleanupError) {
+          console.error('Error al limpiar archivos:', cleanupError)
+        }
+      }
+
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
@@ -379,6 +444,7 @@ class SolicitudesController {
         fecha_necesidad,
         items,
         comentarios_generales,
+        archivos_a_eliminar, // Array de nombres de archivos a eliminar
       } = req.body
 
       if (!id || isNaN(id)) {
@@ -420,6 +486,47 @@ class SolicitudesController {
         })
       }
 
+      // Procesar archivos existentes
+      let archivos_adjuntos = solicitud.archivos_adjuntos || []
+
+      // Eliminar archivos si se solicita
+      if (archivos_a_eliminar && Array.isArray(archivos_a_eliminar)) {
+        // Filtrar archivos que NO están en la lista de eliminación
+        const archivosAMantener = archivos_adjuntos.filter(
+          (archivo) => !archivos_a_eliminar.includes(archivo.nombre_archivo)
+        )
+
+        // Eliminar archivos del sistema de archivos
+        const archivosAEliminar = archivos_adjuntos.filter((archivo) =>
+          archivos_a_eliminar.includes(archivo.nombre_archivo)
+        )
+
+        await Promise.all(
+          archivosAEliminar.map((archivo) =>
+            fs.unlink(archivo.ruta_archivo).catch(console.error)
+          )
+        )
+
+        archivos_adjuntos = archivosAMantener
+      }
+
+      // Agregar nuevos archivos si existen (ya procesados por middleware)
+      if (
+        req.body.archivos_procesados &&
+        req.body.archivos_procesados.length > 0
+      ) {
+        const nuevosArchivos = req.body.archivos_procesados.map((file) => ({
+          nombre_original: file.originalname,
+          nombre_archivo: file.filename,
+          ruta_archivo: file.path,
+          tamaño: file.size,
+          tipo_mime: file.mimetype,
+          fecha_subida: new Date(),
+        }))
+
+        archivos_adjuntos = [...archivos_adjuntos, ...nuevosArchivos]
+      }
+
       // Construir objeto de actualización dinámicamente
       const updateData = {}
 
@@ -432,11 +539,19 @@ class SolicitudesController {
       if (urgencia !== undefined) updateData.urgencia = urgencia
       if (presupuesto_estimado !== undefined)
         updateData.presupuesto_estimado = presupuesto_estimado
-      if (fecha_necesidad !== undefined)
-        updateData.fecha_necesidad = fecha_necesidad
-      if (items !== undefined) updateData.items = items
+      if (fecha_necesidad !== undefined) {
+        updateData.fecha_necesidad = convertirFecha(fecha_necesidad)
+      }
       if (comentarios_generales !== undefined)
         updateData.comentarios_generales = comentarios_generales
+
+      // Procesar items (ya procesados por middleware)
+      if (items !== undefined) {
+        updateData.items = req.body.items || solicitud.items || []
+      }
+
+      // Actualizar archivos
+      updateData.archivos_adjuntos = archivos_adjuntos
 
       if (Object.keys(updateData).length === 0) {
         await transaction.rollback()
@@ -459,6 +574,23 @@ class SolicitudesController {
     } catch (error) {
       await transaction.rollback()
       console.error('Error al actualizar solicitud:', error)
+
+      // Limpiar archivos subidos si hay error
+      if (
+        req.body.archivos_procesados &&
+        req.body.archivos_procesados.length > 0
+      ) {
+        try {
+          await Promise.all(
+            req.body.archivos_procesados.map((file) =>
+              fs.unlink(file.path).catch(console.error)
+            )
+          )
+        } catch (cleanupError) {
+          console.error('Error al limpiar archivos:', cleanupError)
+        }
+      }
+
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
@@ -466,6 +598,71 @@ class SolicitudesController {
     }
   }
 
+  // Función auxiliar para servir archivos
+  async descargarArchivo(req, res) {
+    try {
+      const { id, nombreArchivo } = req.params
+
+      // Verificar que la solicitud existe y el usuario tiene permisos
+      const solicitud = await Solicitud.findByPk(id)
+
+      if (!solicitud) {
+        return res.status(404).json({
+          success: false,
+          message: 'Solicitud no encontrada',
+        })
+      }
+
+      // Control de acceso
+      if (
+        req.user.rol === 'solicitante' &&
+        solicitud.solicitante_id !== req.user.id_usuario
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para descargar este archivo',
+        })
+      }
+
+      // Buscar el archivo en los archivos adjuntos
+      const archivo = solicitud.archivos_adjuntos?.find(
+        (arch) => arch.nombre_archivo === nombreArchivo
+      )
+
+      if (!archivo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Archivo no encontrado',
+        })
+      }
+
+      // Verificar que el archivo existe físicamente
+      try {
+        await fs.access(archivo.ruta_archivo)
+      } catch (error) {
+        return res.status(404).json({
+          success: false,
+          message: 'Archivo no encontrado en el sistema',
+        })
+      }
+
+      // Configurar headers para descarga
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${archivo.nombre_original}"`
+      )
+      res.setHeader('Content-Type', archivo.tipo_mime)
+
+      // Enviar archivo
+      res.sendFile(path.resolve(archivo.ruta_archivo))
+    } catch (error) {
+      console.error('Error al descargar archivo:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+      })
+    }
+  }
   async aprobarSolicitud(req, res) {
     const transaction = await sequelize.transaction()
 
@@ -563,15 +760,8 @@ class SolicitudesController {
         })
       }
 
-      // Obtener configuración del sistema para aprobaciones mínimas
-      const configAprobaciones = await ConfiguracionSistema.findOne({
-        where: { clave_configuracion: 'requiere_aprobacion_minima' },
-        transaction,
-      })
-
-      const aprobacionesMinimas = parseInt(
-        configAprobaciones?.valor_configuracion || '1'
-      )
+      // Configuración de aprobaciones mínimas (por defecto 1)
+      const aprobacionesMinimas = 1
 
       // Contar aprobaciones actuales
       const aprobacionesActuales = await Aprobacion.count({
@@ -610,60 +800,6 @@ class SolicitudesController {
         {
           estatus: nuevoEstatus,
           fecha_actualizacion: new Date(),
-        },
-        { transaction }
-      )
-
-      // Crear notificación para el solicitante
-      await Notificacion.create(
-        {
-          usuario_destino: solicitud.solicitante_id,
-          solicitud_id: id,
-          titulo_notificacion: 'Solicitud Aprobada',
-          mensaje: `Tu solicitud ${solicitud.folio_solicitud} ha sido aprobada por ${req.user.nombre_completo}`,
-          tipo: 'cambio_estatus',
-        },
-        { transaction }
-      )
-
-      // Si la solicitud está completamente aprobada, notificar al área administrativa
-      if (nuevoEstatus === 'aprobada') {
-        // Buscar usuarios administrativos para notificar
-        const usuariosAdministrativos = await Usuario.findAll({
-          where: {
-            rol: ['administrativo', 'admin_sistema'],
-            estatus: 'activo',
-          },
-          transaction,
-        })
-
-        // Crear notificaciones para usuarios administrativos
-        const notificacionesAdmin = usuariosAdministrativos.map((usuario) => ({
-          usuario_destino: usuario.id_usuario,
-          solicitud_id: id,
-          titulo_notificacion: 'Solicitud Lista para Proceso',
-          mensaje: `La solicitud ${solicitud.folio_solicitud} está aprobada y lista para continuar el proceso de compra`,
-          tipo: 'nueva_solicitud',
-        }))
-
-        if (notificacionesAdmin.length > 0) {
-          await Notificacion.bulkCreate(notificacionesAdmin, { transaction })
-        }
-      }
-
-      // Registrar en auditoría
-      await LogAuditoria.create(
-        {
-          usuario_id: req.user.id_usuario,
-          accion_realizada: 'APROBAR_SOLICITUD',
-          tabla_afectada: 'solicitudes',
-          registro_afectado: id,
-          datos_anteriores: { estatus: solicitud.estatus },
-          datos_nuevos: {
-            estatus: nuevoEstatus,
-            aprobacion_id: nuevaAprobacion.id_aprobacion,
-          },
-          ip_usuario: req.ip,
         },
         { transaction }
       )
@@ -727,7 +863,6 @@ class SolicitudesController {
           message: 'Solicitud no encontrada',
         })
       }
-      console.log(req.user.rol)
 
       // Verificar permisos
       if (
@@ -868,6 +1003,241 @@ class SolicitudesController {
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
+      })
+    }
+  }
+  async descargarArchivo(req, res) {
+    try {
+      const { id, nombreArchivo } = req.params
+
+      // Verificar que la solicitud existe y el usuario tiene permisos
+      const solicitud = await Solicitud.findByPk(id)
+
+      if (!solicitud) {
+        return res.status(404).json({
+          success: false,
+          message: 'Solicitud no encontrada',
+        })
+      }
+
+      // Control de acceso
+      if (
+        req.user.rol === 'solicitante' &&
+        solicitud.solicitante_id !== req.user.id_usuario
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para descargar este archivo',
+        })
+      }
+
+      // Buscar el archivo en los archivos adjuntos
+      const archivo = solicitud.archivos_adjuntos?.find(
+        (arch) => arch.nombre_archivo === nombreArchivo
+      )
+
+      if (!archivo) {
+        return res.status(404).json({
+          success: false,
+          message: 'Archivo no encontrado',
+        })
+      }
+
+      // Verificar que el archivo existe físicamente
+      try {
+        await fs.access(archivo.ruta_archivo)
+      } catch (error) {
+        return res.status(404).json({
+          success: false,
+          message: 'Archivo no encontrado en el sistema',
+        })
+      }
+
+      // Configurar headers para descarga
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${archivo.nombre_original}"`
+      )
+      res.setHeader('Content-Type', archivo.tipo_mime)
+
+      // Enviar archivo
+      res.sendFile(path.resolve(archivo.ruta_archivo))
+    } catch (error) {
+      console.error('Error al descargar archivo:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+      })
+    }
+  }
+
+  // Eliminar solicitud
+  async eliminarSolicitud(req, res) {
+    const transaction = await sequelize.transaction()
+
+    try {
+      const { id } = req.params
+      const { confirmacion, motivo_eliminacion } = req.body
+
+      // Validar parámetros
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de solicitud no válido',
+        })
+      }
+
+      // Requerir confirmación explícita
+      if (!confirmacion || confirmacion !== 'ELIMINAR') {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Se requiere confirmación explícita. Envía confirmacion: "ELIMINAR" en el body.',
+        })
+      }
+
+      // Verificar que la solicitud existe
+      const solicitud = await Solicitud.findByPk(id, {
+        include: [
+          {
+            model: Usuario,
+            as: 'solicitante',
+            attributes: ['nombre_completo', 'correo_institucional'],
+          },
+          {
+            model: Aprobacion,
+            as: 'aprobaciones',
+            attributes: ['id_aprobacion'],
+          },
+        ],
+        transaction,
+      })
+
+      if (!solicitud) {
+        await transaction.rollback()
+        return res.status(404).json({
+          success: false,
+          message: 'Solicitud no encontrada',
+        })
+      }
+
+      // Control de permisos más estricto para eliminación
+      const puedeEliminar =
+        // Admin sistema siempre puede eliminar
+        req.user.rol === 'admin_sistema' ||
+        // El solicitante solo puede eliminar sus propias solicitudes pendientes
+        (req.user.rol === 'solicitante' &&
+          solicitud.solicitante_id === req.user.id_usuario &&
+          solicitud.estatus === 'pendiente') ||
+        // Administrativo puede eliminar solicitudes no completadas
+        (req.user.rol === 'administrativo' &&
+          !['completada'].includes(solicitud.estatus))
+
+      if (!puedeEliminar) {
+        await transaction.rollback()
+        return res.status(403).json({
+          success: false,
+          message:
+            'No tienes permisos para eliminar esta solicitud. Solo se pueden eliminar solicitudes pendientes por el solicitante, o por administradores.',
+        })
+      }
+
+      // Verificar restricciones por estado
+      if (solicitud.estatus === 'completada') {
+        await transaction.rollback()
+        return res.status(400).json({
+          success: false,
+          message:
+            'No se pueden eliminar solicitudes completadas. Contacta al administrador si es necesario.',
+        })
+      }
+
+      // Si la solicitud tiene aprobaciones, requerir rol administrativo
+      if (solicitud.aprobaciones && solicitud.aprobaciones.length > 0) {
+        const rolesAdministrativos = ['admin_sistema', 'administrativo']
+        if (!rolesAdministrativos.includes(req.user.rol)) {
+          await transaction.rollback()
+          return res.status(400).json({
+            success: false,
+            message:
+              'Esta solicitud tiene aprobaciones y solo puede ser eliminada por un administrador.',
+          })
+        }
+      }
+
+      // Guardar información de la solicitud para el log
+      const infoSolicitud = {
+        folio: solicitud.folio_solicitud,
+        solicitante: solicitud.solicitante.nombre_completo,
+        tipo: solicitud.tipo_requisicion,
+        estatus: solicitud.estatus,
+        fecha_creacion: solicitud.fecha_creacion,
+        eliminado_por: req.user.nombre_completo,
+        motivo: motivo_eliminacion || 'Sin motivo especificado',
+        fecha_eliminacion: new Date(),
+      }
+
+      // Eliminar archivos físicos asociados
+      const archivosEliminados = []
+      if (
+        solicitud.archivos_adjuntos &&
+        solicitud.archivos_adjuntos.length > 0
+      ) {
+        for (const archivo of solicitud.archivos_adjuntos) {
+          try {
+            await fs.unlink(archivo.ruta_archivo)
+            archivosEliminados.push(archivo.nombre_original)
+          } catch (error) {
+            console.error(
+              `Error al eliminar archivo ${archivo.nombre_original}:`,
+              error
+            )
+            // Continuamos aunque falle la eliminación del archivo
+          }
+        }
+      }
+
+      // Eliminar aprobaciones relacionadas primero (debido a foreign keys)
+      if (solicitud.aprobaciones && solicitud.aprobaciones.length > 0) {
+        await Aprobacion.destroy({
+          where: { solicitud_id: id },
+          transaction,
+        })
+      }
+
+      // Eliminar la solicitud
+      await solicitud.destroy({ transaction })
+
+      // Registrar la eliminación en logs (opcional - puedes crear una tabla de auditoría)
+      console.log(
+        'Solicitud eliminada:',
+        JSON.stringify(infoSolicitud, null, 2)
+      )
+
+      await transaction.commit()
+
+      res.json({
+        success: true,
+        message: 'Solicitud eliminada exitosamente',
+        data: {
+          solicitud_eliminada: {
+            folio_solicitud: infoSolicitud.folio,
+            eliminado_por: infoSolicitud.eliminado_por,
+            fecha_eliminacion: infoSolicitud.fecha_eliminacion,
+            archivos_eliminados: archivosEliminados,
+            motivo: infoSolicitud.motivo,
+          },
+        },
+      })
+    } catch (error) {
+      await transaction.rollback()
+      console.error('Error al eliminar solicitud:', error)
+
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
       })
     }
   }
