@@ -9,7 +9,9 @@ const {
   actualizarSolicitud,
   aprobarSolicitud,
   cancelarSolicitud,
-  obtenerEstadisticas
+  eliminarSolicitud, // ← Nueva función agregada
+  obtenerEstadisticas,
+  descargarArchivo,
 } = require('../controllers/solicitudesController')
 const { protect, authorize } = require('../middleware/authMiddleware')
 
@@ -19,13 +21,15 @@ const router = express.Router()
 router.use(protect)
 
 // Rutas específicas ANTES de las rutas parametrizadas
-router.get('/estadisticas', 
+router.get(
+  '/estadisticas',
   authorize('admin_sistema', 'administrativo', 'aprobador'),
   obtenerEstadisticas
 )
 
 // Ruta para obtener mis solicitudes (solicitante)
-router.get('/mis-solicitudes', 
+router.get(
+  '/mis-solicitudes',
   authorize('solicitante'),
   (req, res, next) => {
     // Agregar filtro automático por usuario
@@ -35,16 +39,16 @@ router.get('/mis-solicitudes',
   obtenerSolicitudes
 )
 
+// Ruta para descargar archivos
+router.get('/:id/archivos/:nombreArchivo', descargarArchivo)
+
 // Rutas principales
-router
-  .route('/')
-  .get(obtenerSolicitudes)
-  .post(
-    upload.array('archivos', 5), // Procesar hasta 5 archivos
-    processFormData,             // Procesar FormData
-    authorize('solicitante', 'admin_sistema'),
-    crearSolicitud              // Crear solicitud
-  )
+router.route('/').get(obtenerSolicitudes).post(
+  upload.array('archivos', 5), // Procesar hasta 5 archivos
+  processFormData, // Procesar FormData
+  authorize('solicitante', 'admin_sistema'),
+  crearSolicitud // Crear solicitud
+)
 
 // Rutas por ID
 router
@@ -56,15 +60,21 @@ router
     authorize('solicitante', 'admin_sistema'),
     actualizarSolicitud
   )
+  .delete(
+    authorize('solicitante', 'admin_sistema', 'administrativo'),
+    eliminarSolicitud
+  )
 
 // Ruta para aprobar solicitud
-router.patch('/:id/aprobar', 
-  authorize('admin_sistema', 'administrativo'),
+router.patch(
+  '/:id/aprobar',
+  authorize('admin_sistema', 'administrativo', 'aprobador'),
   aprobarSolicitud
 )
 
 // Ruta para cancelar solicitud
-router.patch('/:id/cancelar', 
+router.patch(
+  '/:id/cancelar',
   authorize('solicitante', 'admin_sistema', 'administrativo'),
   cancelarSolicitud
 )

@@ -4,6 +4,7 @@ const cors = require('cors')
 const helmet = require('helmet')
 const morgan = require('morgan')
 const compression = require('compression')
+const path = require('path');
 require('dotenv').config()
 
 const { sequelize } = require('./src/models')
@@ -14,6 +15,9 @@ const DatabaseService = require('./src/services/databaseService')
 const { showBanner, showServerInfo } = require('./src/utils/banner') // IMPORTAR banner
 
 const app = express()
+
+// Servir archivos estáticos desde la carpeta uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Middleware de seguridad
 app.use(helmet())

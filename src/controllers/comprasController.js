@@ -1,431 +1,609 @@
 // ===== ARCHIVO: src/controllers/comprasController.js - CON SEQUELIZE =====
-const { Op } = require('sequelize');
-const { 
-    Solicitud, 
-    Usuario, 
-    Departamento, 
-    Compra,
-    Factura,
-    DocumentoAdjunto,
-    sequelize 
-} = require('../models');
+const { Op } = require('sequelize')
+const {
+  Solicitud,
+  Usuario,
+  Departamento,
+  Compra,
+  Factura,
+  DocumentoAdjunto,
+  sequelize,
+} = require('../models')
 
 class ComprasController {
-    
-    // Crear nueva compra
-    async crearCompra(req, res) {
-        const transaction = await sequelize.transaction();
-        try {
-            const {
-                solicitud_id,
-                proveedor_seleccionado,
-                monto_total,
-                fecha_compra,
-                fecha_entrega_estimada,
-                terminos_entrega,
-                observaciones,
-                facturas = []
-            } = req.body;
+  // Crear nueva compra
+  async crearCompra(req, res) {
+    const transaction = await sequelize.transaction()
+    try {
+      const {
+        solicitud_id,
+        proveedor_seleccionado,
+        monto_total,
+        fecha_compra,
+        fecha_entrega_estimada,
+        terminos_entrega,
+        observaciones,
+        facturas = [],
+      } = req.body
 
-            console.log(req.body);
-            // Validaciones básicas
-            if (!proveedor_seleccionado || !monto_total || !fecha_compra) {
-                await transaction.rollback();
-                return res.status(400).json({
-                    success: false,
-                    message: 'Nombre de proveedor, monto total y fecha de compra son campos requeridos'
-                });
-            }
+      console.log(req.body)
+      // Validaciones básicas
+      if (!proveedor_seleccionado || !monto_total || !fecha_compra) {
+        await transaction.rollback()
+        return res.status(400).json({
+          success: false,
+          message:
+            'Nombre de proveedor, monto total y fecha de compra son campos requeridos',
+        })
+      }
 
-            // Generar número de orden único
-            const ultimaCompra = await sequelize.query(`
+      // Generar número de orden único
+      const ultimaCompra = await sequelize.query(
+        `
                 SELECT COALESCE(MAX(CAST(SUBSTRING(numero_orden FROM '[0-9]+$') AS INTEGER)), 0) + 1 as siguiente_numero
                 FROM compras 
                 WHERE numero_orden ~ '^COM-[0-9]+$'
-            `, { 
-                type: sequelize.QueryTypes.SELECT, 
-                transaction 
-            });
-            
-            const numero_orden = `COM-${String(ultimaCompra[0].siguiente_numero).padStart(6, '0')}`;
-
-            // Crear la compra
-            const nuevaCompra = await Compra.create({
-                numero_orden,
-                solicitud_id: solicitud_id || null,
-                proveedor_seleccionado,
-                monto_total,
-                fecha_compra,
-                fecha_entrega_estimada,
-                terminos_entrega,
-                observaciones,
-                estatus: 'ordenada',
-                creado_por: req.user.id_usuario
-            }, { transaction });
-
-            // Procesar facturas si existen
-            if (facturas && facturas.length > 0) {
-                for (const factura of facturas) {
-                    await Factura.create({
-                        compra_id: nuevaCompra.id_compra,
-                        folio_fiscal: factura.folio_fiscal || `FAC-${Date.now()}`,
-                        monto_factura: factura.monto_factura || monto_total,
-                        iva: factura.iva || 0,
-                        total_factura: factura.total_factura || monto_total,
-                        fecha_factura: factura.fecha_factura || fecha_compra,
-                        estatus: 'pendiente'
-                    }, { transaction });
-                }
-            }
-
-            await transaction.commit();
-
-            res.status(201).json({
-                success: true,
-                message: 'Compra creada exitosamente',
-                data: nuevaCompra.toJSON()
-            });
-
-        } catch (error) {
-            await transaction.rollback();
-            console.error('Error al crear compra:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor',
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+            `,
+        {
+          type: sequelize.QueryTypes.SELECT,
+          transaction,
         }
-    }
+      )
 
-    // Obtener todas las compras con filtros
-    async obtenerCompras(req, res) {
-        try {
-            const { 
-                page = 1, 
-                limit = 10, 
-                estatus, 
-                fecha_inicio,
-                fecha_fin,
-                search
-            } = req.query;
+      const numero_orden = `COM-${String(ultimaCompra[0].siguiente_numero).padStart(6, '0')}`
 
-            const offset = (page - 1) * limit;
-            
-            // Construir condiciones WHERE
-            const whereConditions = {};
-            
-            if (estatus) whereConditions.estatus = estatus;
-            
-            // Filtros de fecha
-            if (fecha_inicio || fecha_fin) {
-                whereConditions.fecha_compra = {};
-                if (fecha_inicio) {
-                    whereConditions.fecha_compra[Op.gte] = new Date(fecha_inicio);
-                }
-                if (fecha_fin) {
-                    const fechaFin = new Date(fecha_fin);
-                    fechaFin.setHours(23, 59, 59, 999);
-                    whereConditions.fecha_compra[Op.lte] = fechaFin;
-                }
-            }
-            
-            // Búsqueda de texto
-            if (search) {
-                whereConditions[Op.or] = [
-                    { numero_orden: { [Op.iLike]: `%${search}%` } },
-                    { proveedor_seleccionado: { [Op.iLike]: `%${search}%` } }
-                ];
-            }
+      // Crear la compra
+      const nuevaCompra = await Compra.create(
+        {
+          numero_orden,
+          solicitud_id: solicitud_id || null,
+          proveedor_seleccionado,
+          monto_total,
+          fecha_compra,
+          fecha_entrega_estimada,
+          terminos_entrega,
+          observaciones,
+          estatus: 'ordenada',
+          creado_por: req.user.id_usuario,
+        },
+        { transaction }
+      )
 
-            // Consulta principal con Sequelize
-            const { count, rows: compras } = await Compra.findAndCountAll({
-                where: whereConditions,
-                include: [
-                    {
-                        model: Solicitud,
-                        as: 'solicitud',
-                        attributes: ['folio_solicitud', 'descripcion_detallada'],
-                        required: false
-                    },
-                    {
-                        model: Usuario,
-                        as: 'creador',
-                        attributes: ['nombre_completo', 'numero_empleado']
-                    }
-                ],
-                order: [['fecha_compra', 'DESC']],
-                limit: parseInt(limit),
-                offset: parseInt(offset),
-                distinct: true
-            });
-
-            res.json({
-                success: true,
-                data: compras,
-                pagination: {
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    total: count,
-                    pages: Math.ceil(count / limit)
-                }
-            });
-
-        } catch (error) {
-            console.error('Error al obtener compras:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
+      // Procesar facturas si existen
+      if (facturas && facturas.length > 0) {
+        for (const factura of facturas) {
+          await Factura.create(
+            {
+              compra_id: nuevaCompra.id_compra,
+              folio_fiscal: factura.folio_fiscal || `FAC-${Date.now()}`,
+              monto_factura: factura.monto_factura || monto_total,
+              iva: factura.iva || 0,
+              total_factura: factura.total_factura || monto_total,
+              fecha_factura: factura.fecha_factura || fecha_compra,
+              estatus: 'pendiente',
+            },
+            { transaction }
+          )
         }
+      }
+
+      await transaction.commit()
+
+      res.status(201).json({
+        success: true,
+        message: 'Compra creada exitosamente',
+        data: nuevaCompra.toJSON(),
+      })
+    } catch (error) {
+      await transaction.rollback()
+      console.error('Error al crear compra:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
+      })
     }
+  }
 
-    // Obtener compra por ID
-    async obtenerCompraPorId(req, res) {
-        try {
-            const { id } = req.params;
+  // Obtener todas las compras con filtros
+  async obtenerCompras(req, res) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        estatus,
+        fecha_inicio,
+        fecha_fin,
+        search,
+      } = req.query
 
-            if (!id || isNaN(id)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'ID de compra no válido'
-                });
-            }
+      const offset = (page - 1) * limit
 
-            const compra = await Compra.findOne({
-                where: { id_compra: id },
-                include: [
-                    {
-                        model: Solicitud,
-                        as: 'solicitud',
-                        attributes: ['folio_solicitud', 'descripcion_detallada', 'presupuesto_estimado'],
-                        required: false
-                    },
-                    {
-                        model: Usuario,
-                        as: 'creador',
-                        attributes: ['nombre_completo', 'numero_empleado', 'correo_institucional']
-                    },
-                    {
-                        model: Factura,
-                        as: 'facturas',
-                        attributes: ['id_factura', 'folio_fiscal', 'monto_factura', 'total_factura', 'fecha_factura', 'estatus']
-                    }
-                ]
-            });
+      // Construir condiciones WHERE
+      const whereConditions = {}
 
-            if (!compra) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Compra no encontrada'
-                });
-            }
+      if (estatus) whereConditions.estatus = estatus
 
-            res.json({
-                success: true,
-                data: compra.toJSON()
-            });
-
-        } catch (error) {
-            console.error('Error al obtener compra:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
+      // Filtros de fecha
+      if (fecha_inicio || fecha_fin) {
+        whereConditions.fecha_compra = {}
+        if (fecha_inicio) {
+          whereConditions.fecha_compra[Op.gte] = new Date(fecha_inicio)
         }
-    }
-
-    // Actualizar compra
-    async actualizarCompra(req, res) {
-        const transaction = await sequelize.transaction();
-        try {
-            const { id } = req.params;
-            const {
-                proveedor_seleccionado,
-                monto_total,
-                fecha_entrega_estimada,
-                terminos_entrega,
-                observaciones,
-                estatus
-            } = req.body;
-
-            if (!id || isNaN(id)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'ID de compra no válido'
-                });
-            }
-
-            // Verificar que la compra existe
-            const compra = await Compra.findByPk(id, { transaction });
-
-            if (!compra) {
-                await transaction.rollback();
-                return res.status(404).json({
-                    success: false,
-                    message: 'Compra no encontrada'
-                });
-            }
-
-            // Construir objeto de actualización
-            const updateData = {};
-            
-            if (proveedor_seleccionado !== undefined) updateData.proveedor_seleccionado = proveedor_seleccionado;
-            if (monto_total !== undefined) updateData.monto_total = monto_total;
-            if (fecha_entrega_estimada !== undefined) updateData.fecha_entrega_estimada = fecha_entrega_estimada;
-            if (terminos_entrega !== undefined) updateData.terminos_entrega = terminos_entrega;
-            if (observaciones !== undefined) updateData.observaciones = observaciones;
-            if (estatus !== undefined) updateData.estatus = estatus;
-
-            if (Object.keys(updateData).length === 0) {
-                await transaction.rollback();
-                return res.status(400).json({
-                    success: false,
-                    message: 'No se proporcionaron campos para actualizar'
-                });
-            }
-
-            // Actualizar la compra
-            await compra.update(updateData, { transaction });
-
-            await transaction.commit();
-
-            res.json({
-                success: true,
-                message: 'Compra actualizada exitosamente',
-                data: compra.toJSON()
-            });
-
-        } catch (error) {
-            await transaction.rollback();
-            console.error('Error al actualizar compra:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
+        if (fecha_fin) {
+          const fechaFin = new Date(fecha_fin)
+          fechaFin.setHours(23, 59, 59, 999)
+          whereConditions.fecha_compra[Op.lte] = fechaFin
         }
+      }
+
+      // Búsqueda de texto
+      if (search) {
+        whereConditions[Op.or] = [
+          { numero_orden: { [Op.iLike]: `%${search}%` } },
+          { proveedor_seleccionado: { [Op.iLike]: `%${search}%` } },
+        ]
+      }
+
+      // Consulta principal con Sequelize
+      const { count, rows: compras } = await Compra.findAndCountAll({
+        where: whereConditions,
+        include: [
+          {
+            model: Solicitud,
+            as: 'solicitud',
+            attributes: ['folio_solicitud', 'descripcion_detallada'],
+            required: false,
+          },
+          {
+            model: Usuario,
+            as: 'creador',
+            attributes: ['nombre_completo', 'numero_empleado'],
+          },
+        ],
+        order: [['fecha_compra', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        distinct: true,
+      })
+
+      res.json({
+        success: true,
+        data: compras,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: count,
+          pages: Math.ceil(count / limit),
+        },
+      })
+    } catch (error) {
+      console.error('Error al obtener compras:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+      })
     }
+  }
 
-    // Agregar factura a compra
-    async agregarFactura(req, res) {
-        const transaction = await sequelize.transaction();
-        try {
-            const { id } = req.params;
-            const {
-                folio_fiscal,
-                monto_factura,
-                iva,
-                total_factura,
-                fecha_factura
-            } = req.body;
+  // Obtener compra por ID
+  async obtenerCompraPorId(req, res) {
+    try {
+      const { id } = req.params
 
-            if (!id || isNaN(id)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'ID de compra no válido'
-                });
-            }
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de compra no válido',
+        })
+      }
 
-            // Verificar que la compra existe
-            const compra = await Compra.findByPk(id, { transaction });
+      const compra = await Compra.findOne({
+        where: { id_compra: id },
+        include: [
+          {
+            model: Solicitud,
+            as: 'solicitud',
+            attributes: [
+              'folio_solicitud',
+              'descripcion_detallada',
+              'presupuesto_estimado',
+            ],
+            required: false,
+          },
+          {
+            model: Usuario,
+            as: 'creador',
+            attributes: [
+              'nombre_completo',
+              'numero_empleado',
+              'correo_institucional',
+            ],
+          },
+          {
+            model: Factura,
+            as: 'facturas',
+            attributes: [
+              'id_factura',
+              'folio_fiscal',
+              'monto_factura',
+              'total_factura',
+              'fecha_factura',
+              'estatus',
+            ],
+          },
+        ],
+      })
 
-            if (!compra) {
-                await transaction.rollback();
-                return res.status(404).json({
-                    success: false,
-                    message: 'Compra no encontrada'
-                });
-            }
+      if (!compra) {
+        return res.status(404).json({
+          success: false,
+          message: 'Compra no encontrada',
+        })
+      }
 
-            // Crear la factura
-            const nuevaFactura = await Factura.create({
-                compra_id: id,
-                folio_fiscal: folio_fiscal || `FAC-${Date.now()}`,
-                monto_factura: monto_factura || compra.monto_total,
-                iva: iva || 0,
-                total_factura: total_factura || monto_factura || compra.monto_total,
-                fecha_factura: fecha_factura || new Date(),
-                estatus: 'pendiente'
-            }, { transaction });
+      res.json({
+        success: true,
+        data: compra.toJSON(),
+      })
+    } catch (error) {
+      console.error('Error al obtener compra:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+      })
+    }
+  }
 
-            await transaction.commit();
+  // Actualizar compra
+  async actualizarCompra(req, res) {
+    const transaction = await sequelize.transaction()
+    try {
+      const { id } = req.params
+      const {
+        proveedor_seleccionado,
+        monto_total,
+        fecha_entrega_estimada,
+        terminos_entrega,
+        observaciones,
+        estatus,
+      } = req.body
 
-            res.status(201).json({
-                success: true,
-                message: 'Factura agregada exitosamente',
-                data: nuevaFactura.toJSON()
-            });
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de compra no válido',
+        })
+      }
 
-        } catch (error) {
-            await transaction.rollback();
-            console.error('Error al agregar factura:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
+      // Verificar que la compra existe
+      const compra = await Compra.findByPk(id, { transaction })
+
+      if (!compra) {
+        await transaction.rollback()
+        return res.status(404).json({
+          success: false,
+          message: 'Compra no encontrada',
+        })
+      }
+
+      // Construir objeto de actualización
+      const updateData = {}
+
+      if (proveedor_seleccionado !== undefined)
+        updateData.proveedor_seleccionado = proveedor_seleccionado
+      if (monto_total !== undefined) updateData.monto_total = monto_total
+      if (fecha_entrega_estimada !== undefined)
+        updateData.fecha_entrega_estimada = fecha_entrega_estimada
+      if (terminos_entrega !== undefined)
+        updateData.terminos_entrega = terminos_entrega
+      if (observaciones !== undefined) updateData.observaciones = observaciones
+      if (estatus !== undefined) updateData.estatus = estatus
+
+      if (Object.keys(updateData).length === 0) {
+        await transaction.rollback()
+        return res.status(400).json({
+          success: false,
+          message: 'No se proporcionaron campos para actualizar',
+        })
+      }
+
+      // Actualizar la compra
+      await compra.update(updateData, { transaction })
+
+      await transaction.commit()
+
+      res.json({
+        success: true,
+        message: 'Compra actualizada exitosamente',
+        data: compra.toJSON(),
+      })
+    } catch (error) {
+      await transaction.rollback()
+      console.error('Error al actualizar compra:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+      })
+    }
+  }
+
+  // Eliminar compra
+  async eliminarCompra(req, res) {
+    const transaction = await sequelize.transaction()
+
+    try {
+      const { id } = req.params
+      const { confirmacion, motivo_eliminacion } = req.body
+
+      // Validar parámetros
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de compra no válido',
+        })
+      }
+
+      // Requerir confirmación explícita
+      if (!confirmacion || confirmacion !== 'ELIMINAR') {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Se requiere confirmación explícita. Envía confirmacion: "ELIMINAR" en el body.',
+        })
+      }
+
+      // Verificar que la compra existe
+      const compra = await Compra.findByPk(id, {
+        include: [
+          {
+            model: Solicitud,
+            as: 'solicitud',
+            attributes: ['folio_solicitud', 'descripcion_detallada'],
+          },
+          {
+            model: Usuario,
+            as: 'creador',
+            attributes: ['nombre_completo', 'correo_institucional'],
+          },
+          {
+            model: Factura,
+            as: 'facturas',
+            attributes: ['id_factura', 'folio_fiscal', 'estatus'],
+          },
+        ],
+        transaction,
+      })
+
+      if (!compra) {
+        await transaction.rollback()
+        return res.status(404).json({
+          success: false,
+          message: 'Compra no encontrada',
+        })
+      }
+
+      // Control de permisos para eliminación de compras
+      const puedeEliminar =
+        // Admin sistema siempre puede eliminar
+        req.user.rol === 'admin_sistema' ||
+        // Administrativo puede eliminar compras no entregadas
+        (req.user.rol === 'administrativo' &&
+          !['entregada'].includes(compra.estatus)) ||
+        // Aprobador puede eliminar compras no entregadas
+        (req.user.rol === 'aprobador' &&
+          !['entregada'].includes(compra.estatus)) ||
+        // El creador puede eliminar compras ordenadas únicamente
+        (compra.creado_por === req.user.id_usuario &&
+          compra.estatus === 'ordenada')
+
+      if (!puedeEliminar) {
+        await transaction.rollback()
+        return res.status(403).json({
+          success: false,
+          message:
+            'No tienes permisos para eliminar esta compra. Solo se pueden eliminar compras ordenadas por el creador, o por administradores.',
+        })
+      }
+
+      // Verificar restricciones por estado
+      if (compra.estatus === 'entregada') {
+        await transaction.rollback()
+        return res.status(400).json({
+          success: false,
+          message:
+            'No se pueden eliminar compras ya entregadas. Contacta al administrador si es necesario.',
+        })
+      }
+
+      // Si la compra tiene facturas, requerir rol administrativo
+      if (compra.facturas && compra.facturas.length > 0) {
+        const rolesAdministrativos = ['admin_sistema', 'administrativo']
+        if (!rolesAdministrativos.includes(req.user.rol)) {
+          await transaction.rollback()
+          return res.status(400).json({
+            success: false,
+            message:
+              'Esta compra tiene facturas asociadas y solo puede ser eliminada por un administrador.',
+          })
         }
+      }
+
+      // Guardar información de la compra para el log
+      const infoCompra = {
+        numero_orden: compra.numero_orden,
+        proveedor: compra.proveedor_seleccionado,
+        monto_total: compra.monto_total,
+        estatus: compra.estatus,
+        fecha_compra: compra.fecha_compra,
+        solicitud_relacionada:
+          compra.solicitud?.folio_solicitud || 'Sin solicitud',
+        eliminado_por: req.user.nombre_completo,
+        motivo: motivo_eliminacion || 'Sin motivo especificado',
+        fecha_eliminacion: new Date(),
+      }
+
+      // Eliminar facturas relacionadas primero (debido a foreign keys)
+      if (compra.facturas && compra.facturas.length > 0) {
+        await Factura.destroy({
+          where: { compra_id: id },
+          transaction,
+        })
+      }
+
+      // Eliminar la compra
+      await compra.destroy({ transaction })
+
+      // Registrar la eliminación en logs
+      console.log('Compra eliminada:', JSON.stringify(infoCompra, null, 2))
+
+      await transaction.commit()
+
+      res.json({
+        success: true,
+        message: 'Compra eliminada exitosamente',
+        data: {
+          compra_eliminada: {
+            numero_orden: infoCompra.numero_orden,
+            eliminado_por: infoCompra.eliminado_por,
+            fecha_eliminacion: infoCompra.fecha_eliminacion,
+            facturas_eliminadas: compra.facturas?.length || 0,
+            motivo: infoCompra.motivo,
+            solicitud_relacionada: infoCompra.solicitud_relacionada,
+          },
+        },
+      })
+    } catch (error) {
+      await transaction.rollback()
+      console.error('Error al eliminar compra:', error)
+
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error:
+          process.env.NODE_ENV === 'development' ? error.message : undefined,
+      })
     }
+  }
 
-    // Actualizar estado de factura
-    async actualizarEstadoFactura(req, res) {
-        const transaction = await sequelize.transaction();
-        try {
-            const { id, facturaId } = req.params;
-            const { estatus } = req.body;
+  // Agregar factura a compra
+  async agregarFactura(req, res) {
+    const transaction = await sequelize.transaction()
+    try {
+      const { id } = req.params
+      const { folio_fiscal, monto_factura, iva, total_factura, fecha_factura } =
+        req.body
 
-            if (!id || isNaN(id) || !facturaId || isNaN(facturaId)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'IDs de compra y factura no válidos'
-                });
-            }
+      if (!id || isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de compra no válido',
+        })
+      }
 
-            // Validar estado
-            const estadosValidos = ['pendiente', 'recibida', 'pagada', 'cancelada'];
-            if (!estatus || !estadosValidos.includes(estatus)) {
-                await transaction.rollback();
-                return res.status(400).json({
-                    success: false,
-                    message: 'Estado de factura no válido'
-                });
-            }
+      // Verificar que la compra existe
+      const compra = await Compra.findByPk(id, { transaction })
 
-            // Verificar que la factura existe
-            const factura = await Factura.findOne({
-                where: { 
-                    id_factura: facturaId,
-                    compra_id: id
-                },
-                transaction
-            });
+      if (!compra) {
+        await transaction.rollback()
+        return res.status(404).json({
+          success: false,
+          message: 'Compra no encontrada',
+        })
+      }
 
-            if (!factura) {
-                await transaction.rollback();
-                return res.status(404).json({
-                    success: false,
-                    message: 'Factura no encontrada para esta compra'
-                });
-            }
+      // Crear la factura
+      const nuevaFactura = await Factura.create(
+        {
+          compra_id: id,
+          folio_fiscal: folio_fiscal || `FAC-${Date.now()}`,
+          monto_factura: monto_factura || compra.monto_total,
+          iva: iva || 0,
+          total_factura: total_factura || monto_factura || compra.monto_total,
+          fecha_factura: fecha_factura || new Date(),
+          estatus: 'pendiente',
+        },
+        { transaction }
+      )
 
-            // Actualizar estado
-            await factura.update({ estatus }, { transaction });
+      await transaction.commit()
 
-            await transaction.commit();
-
-            res.json({
-                success: true,
-                message: 'Estado de factura actualizado',
-                data: factura.toJSON()
-            });
-
-        } catch (error) {
-            await transaction.rollback();
-            console.error('Error al actualizar estado de factura:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error interno del servidor'
-            });
-        }
+      res.status(201).json({
+        success: true,
+        message: 'Factura agregada exitosamente',
+        data: nuevaFactura.toJSON(),
+      })
+    } catch (error) {
+      await transaction.rollback()
+      console.error('Error al agregar factura:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+      })
     }
+  }
+
+  // Actualizar estado de factura
+  async actualizarEstadoFactura(req, res) {
+    const transaction = await sequelize.transaction()
+    try {
+      const { id, facturaId } = req.params
+      const { estatus } = req.body
+
+      if (!id || isNaN(id) || !facturaId || isNaN(facturaId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'IDs de compra y factura no válidos',
+        })
+      }
+
+      // Validar estado
+      const estadosValidos = ['pendiente', 'recibida', 'pagada', 'cancelada']
+      if (!estatus || !estadosValidos.includes(estatus)) {
+        await transaction.rollback()
+        return res.status(400).json({
+          success: false,
+          message: 'Estado de factura no válido',
+        })
+      }
+
+      // Verificar que la factura existe
+      const factura = await Factura.findOne({
+        where: {
+          id_factura: facturaId,
+          compra_id: id,
+        },
+        transaction,
+      })
+
+      if (!factura) {
+        await transaction.rollback()
+        return res.status(404).json({
+          success: false,
+          message: 'Factura no encontrada para esta compra',
+        })
+      }
+
+      // Actualizar estado
+      await factura.update({ estatus }, { transaction })
+
+      await transaction.commit()
+
+      res.json({
+        success: true,
+        message: 'Estado de factura actualizado',
+        data: factura.toJSON(),
+      })
+    } catch (error) {
+      await transaction.rollback()
+      console.error('Error al actualizar estado de factura:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+      })
+    }
+  }
 }
 
-module.exports = new ComprasController();
+module.exports = new ComprasController()

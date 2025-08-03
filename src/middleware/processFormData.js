@@ -28,6 +28,16 @@ const processFormData = (req, res, next) => {
       }))
     }
     
+    // Procesar fecha_necesidad si viene en formato dd/mm/yyyy
+    if (req.body.fecha_necesidad && typeof req.body.fecha_necesidad === 'string') {
+      const [dia, mes, año] = req.body.fecha_necesidad.split('/')
+      if (dia && mes && año && dia.length === 2 && mes.length === 2 && año.length === 4) {
+        // Mantener el formato original para que el controlador lo procese
+        // No convertir aquí para evitar problemas de zona horaria
+        console.log(`📅 Fecha recibida: ${req.body.fecha_necesidad}`)
+      }
+    }
+    
     // Agregar archivos procesados al body
     if (req.files && req.files.length > 0) {
       req.body.archivos_procesados = req.files.map(file => ({

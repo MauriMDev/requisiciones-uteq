@@ -1,4 +1,4 @@
-// ===== ARCHIVO: src/models/index.js CORREGIDO =====
+// ===== ARCHIVO: src/models/index.js CORREGIDO FINAL =====
 const { Sequelize } = require('sequelize')
 const DatabaseService = require('../services/databaseService')
 
@@ -162,7 +162,9 @@ const setupAssociations = () => {
     as: 'solicitud',
   })
 
-  // Proveedor - Compra (proveedor_seleccionado)
+  // ✅ ASOCIACIONES CORREGIDAS PROVEEDOR-COMPRA
+  // ❌ COMENTAR/ELIMINAR LAS ASOCIACIONES PROBLEMÁTICAS:
+  /*
   Proveedor.hasMany(Compra, {
     foreignKey: 'proveedor_seleccionado',
     as: 'compras',
@@ -171,6 +173,30 @@ const setupAssociations = () => {
     foreignKey: 'proveedor_seleccionado',
     as: 'proveedor',
   })
+  */
+
+  // ⭐ NUEVAS ASOCIACIONES SIN RESTRICCIONES FK (TEMPORALMENTE DESHABILITADAS)
+  // Las vamos a manejar manualmente en el controlador para evitar el error de tipos
+  
+  // OPCIÓN 1: Sin asociaciones automáticas (más seguro)
+  // No definir asociaciones Proveedor-Compra y manejarlas manualmente
+  
+  // OPCIÓN 2: Con constraints deshabilitados (puedes probar si quieres)
+  /*
+  Compra.belongsTo(Proveedor, {
+    foreignKey: 'proveedor_seleccionado',
+    targetKey: 'id_proveedor',
+    as: 'proveedor',
+    constraints: false, // Sin restricciones FK
+  })
+
+  Proveedor.hasMany(Compra, {
+    foreignKey: 'proveedor_seleccionado',
+    sourceKey: 'id_proveedor',
+    as: 'compras',
+    constraints: false, // Sin restricciones FK
+  })
+  */
 
   // Usuario - Compra (creado_por)
   Usuario.hasMany(Compra, {
