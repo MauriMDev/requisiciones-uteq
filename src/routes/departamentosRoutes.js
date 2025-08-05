@@ -1,13 +1,13 @@
 // ===== ARCHIVO: src/routes/departamentosRoutes.js =====
-const express = require('express')
-const { protect, authorize } = require('../middleware/authMiddleware')
+const express = require('express');
+const { protect } = require('../middleware/authMiddleware');
+const DepartamentosController = require('../controllers/departamentosController');
 
-const router = express.Router()
+const router = express.Router();
 
-router.use(protect)
+router.use(protect);
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Ruta de departamentos - pendiente implementación' })
-})
+// GET /api/departamentos
+router.get('/', DepartamentosController.obtenerDepartamentos);
 
-module.exports = router
+module.exports = router;
