@@ -28,7 +28,7 @@ router
     obtenerCompras
   )
   .post(
-    upload.array('archivos', 5),
+    upload.array('files', 5),
     processFormData,
     authorize('administrativo', 'admin_sistema', 'aprobador'),
     crearCompra
