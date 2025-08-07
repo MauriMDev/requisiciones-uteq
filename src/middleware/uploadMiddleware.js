@@ -2,10 +2,10 @@
 const multer = require('multer')
 const path = require('path')
 
-// Configuración de almacenamiento
+// Tu configuración actual (storage, fileFilter, etc.) está bien...
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/solicitudes/') // Asegúrate de que exista la carpeta
+    cb(null, 'uploads/solicitudes/')
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
@@ -13,7 +13,6 @@ const storage = multer.diskStorage({
   }
 })
 
-// Filtros de archivo
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
     'application/pdf',
@@ -34,9 +33,15 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-    files: 5 // máximo 5 archivos
+    fileSize: 10 * 1024 * 1024,
+    files: 5
   }
 })
 
-module.exports = upload
+// AQUÍ ESTÁ EL CAMBIO - Exporta métodos específicos:
+module.exports = {
+  single: (fieldName) => upload.single(fieldName),
+  multiple: (fieldName, maxCount) => upload.array(fieldName, maxCount),
+  fields: (fields) => upload.fields(fields),
+  any: () => upload.any() // Para cualquier campo (menos seguro)
+}

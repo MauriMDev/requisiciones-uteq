@@ -1,6 +1,6 @@
 // routes/solicitudesRoutes.js
 const express = require('express')
-const upload = require('../middleware/uploadMiddleware')
+const upload = require('../middleware/uploadMiddleware') // ← Cambio aquí
 const processFormData = require('../middleware/processFormData')
 const {
   crearSolicitud,
@@ -9,7 +9,7 @@ const {
   actualizarSolicitud,
   aprobarSolicitud,
   cancelarSolicitud,
-  eliminarSolicitud, // ← Nueva función agregada
+  eliminarSolicitud,
   obtenerEstadisticas,
   descargarArchivo,
 } = require('../controllers/solicitudesController')
@@ -44,10 +44,10 @@ router.get('/:id/archivos/:nombreArchivo', descargarArchivo)
 
 // Rutas principales
 router.route('/').get(obtenerSolicitudes).post(
-  upload.array('archivos', 5), // Procesar hasta 5 archivos
-  processFormData, // Procesar FormData
+  upload.multiple('files', 5), // ← Cambio aquí: .multiple()
+  processFormData,
   authorize('solicitante', 'admin_sistema'),
-  crearSolicitud // Crear solicitud
+  crearSolicitud
 )
 
 // Rutas por ID
@@ -55,7 +55,7 @@ router
   .route('/:id')
   .get(obtenerSolicitudPorId)
   .put(
-    upload.array('archivos', 5),
+    upload.multiple('files', 5), // ← Cambio aquí: .multiple()
     processFormData,
     authorize('solicitante', 'admin_sistema'),
     actualizarSolicitud
