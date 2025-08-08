@@ -43,9 +43,9 @@ router.get(
 router.get('/:id/archivos/:nombreArchivo', descargarArchivo)
 
 // Rutas principales
-router.route('/').get(obtenerSolicitudes).post(
-  upload.multiple('files', 5), // ← Cambio aquí: .multiple()
-  processFormData,
+router.route('/').get(obtenerSolicitudes).post( //creacion de solicitud y subida de archivos
+  upload.array('files', 5), // Procesar hasta 5 archivos
+  processFormData, // Procesar FormData
   authorize('solicitante', 'admin_sistema'),
   crearSolicitud
 )
