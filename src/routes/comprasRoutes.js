@@ -1,18 +1,16 @@
-// ===== ARCHIVO: src/routes/comprasRoutes.js =====
+// routes/comprasRoutes.js
 const express = require('express')
 const { protect, authorize } = require('../middleware/authMiddleware')
-const upload = require('../middleware/uploadMiddleware')
+const upload = require('../middleware/uploadMiddleware') // ← Sin cambios en import
 const processFormData = require('../middleware/processFormData')
 
 const router = express.Router()
 
-// Exportar las funciones del controlador (asegúrate de importarlas)
 const {
   crearCompra,
   obtenerCompras,
   obtenerCompraPorId,
   actualizarCompra,
-  
   agregarFactura,
   actualizarEstadoFactura,
   eliminarCompra,
@@ -42,7 +40,7 @@ router
     obtenerCompraPorId
   )
   .put(
-    upload.array('archivos', 5),
+    upload.multiple('files', 5), // ← Cambio aquí: .multiple()
     processFormData,
     authorize('administrativo', 'admin_sistema', 'aprobador'),
     actualizarCompra
