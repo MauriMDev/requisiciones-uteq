@@ -518,13 +518,70 @@ const getReporteSolicitudesEstatus = async (req, res) => {
       incluir_tiempos = 'true',
     } = req.query
 
+    console.log('🔍 Parámetros recibidos:', {
+      fecha_inicio,
+      fecha_fin,
+      estatus,
+    })
+
+    // 🔧 CORREGIR MANEJO DE FECHAS CON ZONA HORARIA LOCAL
+    // Crear fechas en zona horaria local (México)
+    const fechaInicioStr = `${fecha_inicio}T00:00:00.000`
+    const fechaFinStr = `${fecha_fin}T23:59:59.999`
+
+    const fechaInicioObj = new Date(fechaInicioStr)
+    const fechaFinObj = new Date(fechaFinStr)
+
+    console.log('📅 Fechas procesadas:', {
+      fechaInicio: fechaInicioObj.toISOString(),
+      fechaFin: fechaFinObj.toISOString(),
+      fechaInicioLocal: fechaInicioObj.toLocaleString(),
+      fechaFinLocal: fechaFinObj.toLocaleString(),
+    })
+
     const whereConditions = {
       fecha_creacion: {
-        [Op.between]: [new Date(fecha_inicio), new Date(fecha_fin)],
+        [Op.between]: [fechaInicioObj, fechaFinObj],
       },
     }
 
     if (estatus) whereConditions.estatus = estatus
+
+    console.log('🔍 Condiciones WHERE:', {
+      ...whereConditions,
+      fecha_creacion: {
+        between: [fechaInicioObj.toISOString(), fechaFinObj.toISOString()],
+      },
+    })
+
+    // 🧪 CONSULTA DE DEBUGGING - Ver todas las solicitudes del día sin filtros de hora
+    const debugQuery = await Solicitud.findAll({
+      attributes: ['folio_solicitud', 'fecha_creacion', 'estatus'],
+      where: {
+        fecha_creacion: {
+          [Op.gte]: new Date(`${fecha_inicio}T00:00:00.000`),
+          [Op.lte]: new Date(`${fecha_fin}T23:59:59.999`),
+        },
+      },
+      raw: true,
+      limit: 10,
+    })
+
+    console.log(
+      '🧪 DEBUG - Solicitudes encontradas:',
+      debugQuery.map((s) => ({
+        folio: s.folio_solicitud,
+        fecha: s.fecha_creacion,
+        estatus: s.estatus,
+      }))
+    )
+
+    // 🧪 VERIFICAR CANTIDAD DE SOLICITUDES EN EL RANGO
+    const totalSolicitudesEnRango = await Solicitud.count({
+      where: whereConditions,
+    })
+
+    console.log(`📊 Total solicitudes encontradas: ${totalSolicitudesEnRango}`)
 
     // Solicitudes con información de aprobaciones
     const solicitudes = await Solicitud.findAll({
@@ -550,6 +607,8 @@ const getReporteSolicitudesEstatus = async (req, res) => {
       ],
       order: [['fecha_creacion', 'DESC']],
     })
+
+    console.log(`✅ Solicitudes obtenidas con includes: ${solicitudes.length}`)
 
     // Análisis de tiempos de aprobación
     const analisisTiempos = solicitudes.map((solicitud) => {
@@ -586,6 +645,8 @@ const getReporteSolicitudesEstatus = async (req, res) => {
       raw: true,
     })
 
+    console.log('📈 Distribución por estatus:', distribucionEstatus)
+
     // Estadísticas de tiempo
     const tiemposValidos = analisisTiempos.filter(
       (s) => s.tiempo_aprobacion_dias !== null
@@ -596,7 +657,7 @@ const getReporteSolicitudesEstatus = async (req, res) => {
           tiemposValidos.length
         : 0
 
-    res.json({
+    const responseData = {
       success: true,
       data: {
         solicitudes: analisisTiempos,
@@ -624,14 +685,39 @@ const getReporteSolicitudesEstatus = async (req, res) => {
                     : 0,
               }
             : null,
+        // 🧪 AGREGAR INFO DE DEBUG
+        debug_info:
+          process.env.NODE_ENV === 'development'
+            ? {
+                fecha_inicio_procesada: fechaInicioObj.toISOString(),
+                fecha_fin_procesada: fechaFinObj.toISOString(),
+                total_solicitudes_en_rango: totalSolicitudesEnRango,
+                where_conditions: whereConditions,
+                debug_solicitudes: debugQuery,
+                timezone_info: {
+                  server_timezone:
+                    Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  fecha_inicio_local: fechaInicioObj.toLocaleString(),
+                  fecha_fin_local: fechaFinObj.toLocaleString(),
+                },
+              }
+            : undefined,
       },
-    })
+    }
+
+    console.log('✅ Respuesta generada exitosamente')
+    res.json(responseData)
   } catch (error) {
-    console.error('Error en getReporteSolicitudesEstatus:', error)
+    console.error('❌ Error en getReporteSolicitudesEstatus:', error)
+    console.error('📍 Stack:', error.stack)
+
     res.status(500).json({
       success: false,
       error: 'Error al generar reporte de solicitudes por estatus',
       details: error.message,
+      ...(process.env.NODE_ENV === 'development' && {
+        stack: error.stack,
+      }),
     })
   }
 }
@@ -1131,9 +1217,16 @@ const obtenerDatosComprasPeriodo = async (parametros) => {
 const obtenerDatosSolicitudesEstatus = async (parametros) => {
   const { fecha_inicio, fecha_fin, estatus } = parametros
 
+  // 🔧 APLICAR LA MISMA CORRECCIÓN DE FECHAS CON ZONA HORARIA LOCAL
+  const fechaInicioStr = `${fecha_inicio}T00:00:00.000`
+  const fechaFinStr = `${fecha_fin}T23:59:59.999`
+
+  const fechaInicioObj = new Date(fechaInicioStr)
+  const fechaFinObj = new Date(fechaFinStr)
+
   const whereConditions = {
     fecha_creacion: {
-      [Op.between]: [new Date(fecha_inicio), new Date(fecha_fin)],
+      [Op.between]: [fechaInicioObj, fechaFinObj],
     },
   }
 
