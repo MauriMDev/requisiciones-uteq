@@ -1,7 +1,7 @@
-// routes/comprasRoutes.js
+// ===== ARCHIVO: src/routes/comprasRoutes.js =====
 const express = require('express')
 const { protect, authorize } = require('../middleware/authMiddleware')
-const upload = require('../middleware/uploadMiddleware') // ← Sin cambios en import
+const upload = require('../middleware/uploadMiddleware')
 const processFormData = require('../middleware/processFormData')
 
 const router = express.Router()
@@ -14,9 +14,16 @@ const {
   agregarFactura,
   actualizarEstadoFactura,
   eliminarCompra,
+  descargarArchivo, // ← NUEVA FUNCIÓN AGREGADA
 } = require('../controllers/comprasController')
 
 router.use(protect)
+
+// Ruta para descargar archivos de compras
+router.get('/:id/archivos/:nombreArchivo', 
+  authorize('administrativo', 'admin_sistema', 'aprobador'),
+  descargarArchivo
+)
 
 // Rutas principales
 router
@@ -40,7 +47,7 @@ router
     obtenerCompraPorId
   )
   .put(
-    upload.multiple('files', 5), // ← Cambio aquí: .multiple()
+    upload.array('files', 5),
     processFormData,
     authorize('administrativo', 'admin_sistema', 'aprobador'),
     actualizarCompra
@@ -50,9 +57,11 @@ router
     eliminarCompra
   )
 
-// Ruta para agregar factura
+// Ruta para agregar factura (con subida de archivos)
 router.post(
   '/:id/facturas',
+  upload.array('files', 3), // Permitir subir archivos de factura
+  processFormData,
   authorize('administrativo', 'admin_sistema', 'aprobador'),
   agregarFactura
 )

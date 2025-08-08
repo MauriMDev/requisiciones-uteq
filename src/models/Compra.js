@@ -58,6 +58,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      archivos_adjuntos: {
+        type: DataTypes.JSONB,
+        defaultValue: [],
+        allowNull: true,
+      },
       creado_por: {
         type: DataTypes.INTEGER,
         allowNull: false,

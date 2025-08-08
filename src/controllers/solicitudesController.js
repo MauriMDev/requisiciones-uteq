@@ -32,9 +32,6 @@ const convertirFecha = (fechaString) => {
 class SolicitudesController {
   // Crear nueva solicitud
   async crearSolicitud(req, res) {
-    console.log('Archivos recibidos:', req.files)
-    console.log('Body recibido:', req.body)
-    
     const transaction = await sequelize.transaction()
     try {
       const {

@@ -5,28 +5,16 @@ const router = express.Router()
 // Importar rutas de módulos
 const authRoutes = require('./authRoutes')
 const usuariosRoutes = require('./usuariosRoutes')
-const departamentosRoutes = require('./departamentosRoutes')
 const solicitudesRoutes = require('./solicitudesRoutes')
-const aprobacionesRoutes = require('./aprobacionesRoutes')
-const proveedoresRoutes = require('./proveedoresRoutes')
-const cotizacionesRoutes = require('./cotizacionesRoutes')
 const comprasRoutes = require('./comprasRoutes')
-const facturasRoutes = require('./facturasRoutes')
 const reportesRoutes = require('./reportesRoutes')
-const notificacionesRoutes = require('./notificacionesRoutes')
 
 // Definir rutas
 router.use('/auth', authRoutes)
 router.use('/usuarios', usuariosRoutes)
-router.use('/departamentos', departamentosRoutes)
 router.use('/solicitudes', solicitudesRoutes)
-router.use('/aprobaciones', aprobacionesRoutes)
-router.use('/proveedores', proveedoresRoutes)
-router.use('/cotizaciones', cotizacionesRoutes)
 router.use('/compras', comprasRoutes)
-router.use('/facturas', facturasRoutes)
 router.use('/reportes', reportesRoutes)
-router.use('/notificaciones', notificacionesRoutes)
 
 // Documentación de la API
 router.get('/', (req, res) => {

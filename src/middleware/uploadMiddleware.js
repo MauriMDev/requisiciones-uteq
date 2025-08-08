@@ -1,10 +1,34 @@
+// middleware/uploadMiddleware.js
 const multer = require('multer')
 const path = require('path')
+const fs = require('fs')
 
-// Tu configuración actual (storage, fileFilter, etc.) está bien...
+// Función para crear directorios si no existen
+const ensureDirExists = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true })
+  }
+}
+
+// Configuración de almacenamiento con detección automática
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/solicitudes/')
+    // Detectar si es solicitud o compra basado en la URL
+    let uploadPath
+    
+    if (req.originalUrl.includes('solicitud')) {
+      uploadPath = 'uploads/solicitudes/'
+    } else if (req.originalUrl.includes('compra')) {
+      uploadPath = 'uploads/compras/'
+    } else {
+      // Fallback para otros casos
+      uploadPath = 'uploads/general/'
+    }
+    
+    // Crear el directorio si no existe
+    ensureDirExists(uploadPath)
+    
+    cb(null, uploadPath)
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
@@ -12,6 +36,7 @@ const storage = multer.diskStorage({
   }
 })
 
+// Filtros de archivo (mismo que tenías)
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
     'application/pdf',
@@ -32,15 +57,14 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024,
-    files: 5
+    fileSize: 10 * 1024 * 1024, // 10MB
+    files: 5 // máximo 5 archivos
   }
 })
 
-// AQUÍ ESTÁ EL CAMBIO - Exporta métodos específicos:
-module.exports = {
-  single: (fieldName) => upload.single(fieldName),
-  multiple: (fieldName, maxCount) => upload.array(fieldName, maxCount),
-  fields: (fields) => upload.fields(fields),
-  any: () => upload.any() // Para cualquier campo (menos seguro)
-}
+// Crear directorios necesarios al inicializar
+ensureDirExists('uploads/solicitudes')
+ensureDirExists('uploads/compras')
+ensureDirExists('uploads/general')
+
+module.exports = upload
