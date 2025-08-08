@@ -1,4 +1,3 @@
-// routes/solicitudesRoutes.js
 const express = require('express')
 const upload = require('../middleware/uploadMiddleware') // ← Cambio aquí
 const processFormData = require('../middleware/processFormData')
