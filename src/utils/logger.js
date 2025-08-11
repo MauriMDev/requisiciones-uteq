@@ -1,6 +1,5 @@
 // ===== ARCHIVO: src/utils/logger.js =====
 const winston = require('winston')
-const path = require('path')
 
 // Configuración de niveles de log
 const levels = {
@@ -31,30 +30,17 @@ const format = winston.format.combine(
   )
 )
 
-// Transports para diferentes ambientes
+// Solo usar console transport (sin archivos)
 const transports = [
-  // Console para desarrollo
   new winston.transports.Console()
 ]
 
-// Archivos de logs para producción
-if (process.env.NODE_ENV === 'production') {
-  transports.push(
-    // Log de errores
-    new winston.transports.File({
-      filename: path.join('logs', 'error.log'),
-      level: 'error'
-    }),
-    // Log combinado
-    new winston.transports.File({
-      filename: path.join('logs', 'combined.log')
-    })
-  )
-}
+// NO agregar archivos de logs en ningún ambiente
+// Los logs se verán en la consola de Vercel y en desarrollo local
 
 // Crear logger
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'development' ? 'debug' : 'warn',
+  level: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
   levels,
   format,
   transports

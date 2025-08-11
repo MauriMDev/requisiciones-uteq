@@ -163,3 +163,4 @@ uploads/.gitkeep
 !uploads/.gitkeep
 logs/.gitkeep
 !logs/.gitkeep
+.vercel

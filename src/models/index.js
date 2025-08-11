@@ -1,38 +1,34 @@
-// ===== ARCHIVO: src/models/index.js CORREGIDO FINAL =====
+// ===== ARCHIVO: src/models/index.js - ACTUALIZADO =====
 const { Sequelize } = require('sequelize')
-const DatabaseService = require('../services/databaseService')
 
-// Inicializar Sequelize - primero intentar obtener de DatabaseService
-let sequelize = DatabaseService.getSequelize()
+let sequelize = null
 
-// Si no existe, crear nueva instancia (fallback)
-if (!sequelize) {
-  sequelize = new Sequelize(
-    process.env.DB_NAME || 'requisiciones_uteq', // CORREGIR nombre de BD
-    process.env.DB_USER || 'postgres',
-    process.env.DB_PASSWORD || '',
-    {
-      host: process.env.DB_HOST || 'localhost',
-      port: process.env.DB_PORT || 5432,
-      dialect: 'postgres',
-      logging: process.env.NODE_ENV === 'development' ? console.log : false,
-      pool: {
-        max: 5,
-        min: 0,
-        acquire: 30000,
-        idle: 10000,
-      },
-      define: {
-        timestamps: true,
-        underscored: true,
-        createdAt: 'created_at',
-        updatedAt: 'updated_at',
-      },
-    }
-  )
+try {
+  // Intentar obtener de la configuración de database primero
+  const { sequelize: dbSequelize } = require('../config/database')
+  sequelize = dbSequelize
+  console.log('✅ Usando instancia de Sequelize desde config/database.js')
+} catch (error) {
+  console.log('⚠️ No se pudo obtener Sequelize desde config, intentando DatabaseService...')
+  
+  try {
+    // Fallback: obtener de DatabaseService
+    const DatabaseService = require('../services/databaseService')
+    sequelize = DatabaseService.getSequelize()
+    console.log('✅ Usando instancia de Sequelize desde DatabaseService')
+  } catch (serviceError) {
+    console.error('❌ Error obteniendo Sequelize:', serviceError.message)
+    throw new Error('No se pudo inicializar Sequelize desde ninguna fuente')
+  }
 }
 
-// Importar modelos corregidos
+if (!sequelize) {
+  throw new Error('Instancia de Sequelize no disponible')
+}
+
+console.log('📦 Cargando todos los modelos...')
+
+// Importar TODOS los modelos directamente
 const Usuario = require('./Usuario')(sequelize, Sequelize.DataTypes)
 const Departamento = require('./Departamento')(sequelize, Sequelize.DataTypes)
 const Solicitud = require('./Solicitud')(sequelize, Sequelize.DataTypes)
@@ -45,13 +41,13 @@ const Notificacion = require('./Notificacion')(sequelize, Sequelize.DataTypes)
 const DocumentoAdjunto = require('./DocumentoAdjunto')(sequelize, Sequelize.DataTypes)
 const LogAuditoria = require('./LogAuditoria')(sequelize, Sequelize.DataTypes)
 const ConfiguracionSistema = require('./ConfiguracionSistema')(sequelize, Sequelize.DataTypes)
-
-// AGREGAR modelos que faltaban
 const EvaluacionProveedor = require('./EvaluacionProveedor')(sequelize, Sequelize.DataTypes)
 const ReporteGenerado = require('./ReporteGenerado')(sequelize, Sequelize.DataTypes)
 
-// Configurar asociaciones
-const setupAssociations = () => {
+console.log('🔗 Configurando asociaciones...')
+
+// Configurar asociaciones directamente
+try {
   // Usuario - Departamento
   Usuario.belongsTo(Departamento, {
     foreignKey: 'departamento_id',
@@ -162,42 +158,6 @@ const setupAssociations = () => {
     as: 'solicitud',
   })
 
-  // ✅ ASOCIACIONES CORREGIDAS PROVEEDOR-COMPRA
-  // ❌ COMENTAR/ELIMINAR LAS ASOCIACIONES PROBLEMÁTICAS:
-  /*
-  Proveedor.hasMany(Compra, {
-    foreignKey: 'proveedor_seleccionado',
-    as: 'compras',
-  })
-  Compra.belongsTo(Proveedor, {
-    foreignKey: 'proveedor_seleccionado',
-    as: 'proveedor',
-  })
-  */
-
-  // ⭐ NUEVAS ASOCIACIONES SIN RESTRICCIONES FK (TEMPORALMENTE DESHABILITADAS)
-  // Las vamos a manejar manualmente en el controlador para evitar el error de tipos
-  
-  // OPCIÓN 1: Sin asociaciones automáticas (más seguro)
-  // No definir asociaciones Proveedor-Compra y manejarlas manualmente
-  
-  // OPCIÓN 2: Con constraints deshabilitados (puedes probar si quieres)
-  /*
-  Compra.belongsTo(Proveedor, {
-    foreignKey: 'proveedor_seleccionado',
-    targetKey: 'id_proveedor',
-    as: 'proveedor',
-    constraints: false, // Sin restricciones FK
-  })
-
-  Proveedor.hasMany(Compra, {
-    foreignKey: 'proveedor_seleccionado',
-    sourceKey: 'id_proveedor',
-    as: 'compras',
-    constraints: false, // Sin restricciones FK
-  })
-  */
-
   // Usuario - Compra (creado_por)
   Usuario.hasMany(Compra, {
     foreignKey: 'creado_por',
@@ -287,12 +247,21 @@ const setupAssociations = () => {
     foreignKey: 'generado_por',
     as: 'usuario_generador',
   })
+
+  console.log('✅ Modelos y asociaciones configurados correctamente')
+
+} catch (error) {
+  console.error('❌ Error configurando asociaciones:', error)
+  throw error
 }
 
-// Configurar asociaciones
-setupAssociations()
+// Función opcional para inicialización desde server
+const initializeModels = () => {
+  console.log('✅ Modelos ya inicializados desde índice')
+  return module.exports
+}
 
-// Exportar todo
+// EXPORTAR DIRECTAMENTE como esperan tus controladores
 module.exports = {
   sequelize,
   Sequelize,
@@ -310,4 +279,7 @@ module.exports = {
   LogAuditoria,
   ConfiguracionSistema,
   ReporteGenerado,
+  
+  // Función opcional
+  initializeModels,
 }

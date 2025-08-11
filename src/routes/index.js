@@ -8,6 +8,7 @@ const usuariosRoutes = require('./usuariosRoutes')
 const solicitudesRoutes = require('./solicitudesRoutes')
 const comprasRoutes = require('./comprasRoutes')
 const reportesRoutes = require('./reportesRoutes')
+const departamentosRoutes = require('./departamentosRoutes')
 
 // Definir rutas
 router.use('/auth', authRoutes)
@@ -15,6 +16,7 @@ router.use('/usuarios', usuariosRoutes)
 router.use('/solicitudes', solicitudesRoutes)
 router.use('/compras', comprasRoutes)
 router.use('/reportes', reportesRoutes)
+router.use('/departamentos', departamentosRoutes)
 
 // Documentación de la API
 router.get('/', (req, res) => {
